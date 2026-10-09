@@ -6,7 +6,7 @@ Prototips funcionals dels mòduls del nou Qualiteasy, un per ruta. Són pàgines
 |---|---|
 | `/` | Portada |
 | `/no-conformitats/` | No conformitats i accions (sistema de gestió ISO 9001 + ENS + requisits legals) |
-| `/incidents/` | Incidències de serveis municipals (cas Alella). Còpia de la branca `demo-estatica` de `qualiteasy-incidents`, que continua publicada a la seva adreça. |
+| `/incidents/` | Incidències de serveis municipals (cas Alella). És l’única versió mantinguda: l’adreça antiga de `qualiteasy-incidents` hi redirigeix. |
 
 Cada demo defineix el contracte d’API del mòdul: totes les crides passen per una funció `api()` que avui respon des d’un magatzem en memòria. Vegeu el `README.md` de cada carpeta.
 
