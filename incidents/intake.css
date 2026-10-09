@@ -1,0 +1,23 @@
+[hidden]{display:none!important}.topbar nav{display:flex;gap:12px;align-items:center}.nav-link,.text-link{background:none;border:0;color:inherit;font:inherit;cursor:pointer;text-decoration:none}.nav-link{padding:9px 10px;border-radius:8px}.nav-link.current{background:#e8f2dd;font-weight:800}.text-link{color:#287a35;font-weight:700;padding:0;text-decoration:underline}.intake-shell{max-width:600px;margin:30px auto 60px;background:#fff;padding:32px;border-radius:20px;box-shadow:0 8px 35px #112a1420}.intake-logo{max-width:225px;width:100%;height:auto}.intake-shell h1{margin:10px 0}.intake-shell p{line-height:1.5}.intake-shell form{display:grid;gap:10px;margin:20px 0}.intake-shell label{font-weight:750;margin-top:12px}.intake-shell textarea,.intake-shell input{width:100%;font:inherit;padding:12px;border:1px solid #b9c9b3;border-radius:9px}.intake-shell button{font:inherit;cursor:pointer}.intake-shell .primary{margin-top:12px}.intake-shell .secondary{justify-self:start}.intake-shell #preview img{display:block;max-width:100%;max-height:260px;border-radius:10px}.intake-shell .suggestions{border:1px solid #b9c9b3;border-radius:8px}.intake-shell .suggestions button{display:block;width:100%;padding:9px;background:white;border:0;text-align:left}.intake-shell #message{font-weight:700}.intake-shell #message.error{color:#ac2626}.intake-shell #message.success{color:#267234}@media(max-width:680px){.intake-shell{margin:0;padding:24px 18px;border-radius:0;min-height:90vh}.topbar nav{gap:2px}.nav-link{font-size:.8rem}}
+/* La demo ha de cabre en una pantalla de brigada sense desplaçament lateral. */
+@media(max-width:900px){
+  .topbar{height:auto;min-height:70px;gap:8px;padding:9px 14px;flex-wrap:wrap}
+  .topbar nav{display:flex;gap:2px;min-width:0;flex:1;justify-content:flex-end}
+  .topbar .brand{min-width:0}
+  .role-bar,.role-switch,.heading,.workarea,.left-panel,.detail-panel,.stats{min-width:0}
+  .workarea{grid-template-columns:minmax(0,1fr)}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:520px){
+  .brand-logo-wrap{width:135px;height:38px;padding:5px 6px}
+  .topbar{align-items:center}
+  .topbar .env{display:none}
+  .topbar nav .nav-link{font-size:12px;line-height:1.1;padding:7px 5px}
+  .role-bar{padding:14px 13px;overflow:hidden}
+  .role-switch{width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .role-switch button{min-width:0;overflow-wrap:anywhere;padding:9px 6px}
+  .flow-steps{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .stat span{overflow-wrap:anywhere}
+  .incident-card,.card-copy,.detail-head,.detail-body{min-width:0}
+}

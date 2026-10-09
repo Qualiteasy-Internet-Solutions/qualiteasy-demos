@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ca"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#1d201b"><title>Demos · Qualiteasy</title>
+<style>
+:root{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:#222a22;background:#f4f6f1;--ink:#1d201b;--green:#397b2b;--lime:#b8d317;--line:#e0e6da;--muted:#647064}
+*{box-sizing:border-box}body{margin:0;background:#f4f6f1}
+header{background:var(--ink);border-bottom:4px solid var(--lime);padding:10px max(16px,calc((100vw - 1100px)/2));display:flex;align-items:center;justify-content:space-between;gap:16px}
+.logo{display:flex;align-items:center;width:220px;height:50px;padding:7px 10px;background:#fff;border-radius:8px}.logo img{width:100%;height:100%;object-fit:contain}
+.env{color:#bdd58e;font-size:11px;letter-spacing:.12em;font-weight:750}
+main{max-width:1100px;margin:auto;padding:40px 16px}
+.eyebrow{color:var(--green);font-size:11px;font-weight:800;letter-spacing:.15em}
+h1{font-size:36px;letter-spacing:-.03em;margin:8px 0}
+.intro{color:var(--muted);font-size:15px;line-height:1.55;max-width:760px;margin:0 0 28px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+.card{background:white;border:1px solid var(--line);border-top:3px solid var(--lime);border-radius:14px;padding:22px;display:flex;flex-direction:column;gap:10px;text-decoration:none;color:inherit;box-shadow:0 4px 18px #20301b08}
+.card:hover,.card:focus{border-color:#a8ca67;outline:none;box-shadow:0 6px 24px #20301b14}
+.card h2{font-size:20px;margin:0}.card p{margin:0;font-size:13px;line-height:1.5;color:#4b5d4d}
+.card ul{margin:0;padding-left:18px;font-size:12px;line-height:1.6;color:#4b5d4d}
+.open{margin-top:auto;font-weight:750;color:var(--green);font-size:13px}
+.soon{border-top-color:#c9d3c1;opacity:.75}.soon .open{color:#7a8976}
+footer{max-width:1100px;margin:0 auto;padding:0 16px 32px;font-size:12px;color:#788473}
+@media(max-width:520px){h1{font-size:28px}.logo{width:170px;height:42px}.env{font-size:9px}}
+</style></head>
+<body>
+<header><span class="logo"><img src="./assets/qualiteasy-logo.png" alt="Qualiteasy"></span><span class="env">DEMOS · NOU QUALITEASY</span></header>
+<main>
+  <div class="eyebrow">PROTOTIPS FUNCIONALS</div>
+  <h1>Demos del nou Qualiteasy</h1>
+  <p class="intro">Cada mòdul es dissenya primer com una demo navegable per validar-ne el flux amb usuaris reals abans de construir-lo. Funcionen sense servidor: els canvis només viuen a la pestanya del navegador i totes les dades són fictícies.</p>
+  <div class="cards">
+    <a class="card" href="./no-conformitats/">
+      <div class="eyebrow">SISTEMA DE GESTIÓ</div>
+      <h2>No conformitats i accions</h2>
+      <p>El mòdul de NC de Qualiteasy amb el flux renovat: alta curta, fitxa completa i verificació d’eficàcia abans de tancar.</p>
+      <ul><li>Llistat amb filtres, Excel i estadístiques</li><li>Correccions, accions, seguiments, documents i relacions</li><li>Traçabilitat per requisit: ISO 9001, ENS i requisits legals</li><li>Perfils: qualitat, responsables, tècnic, direcció i auditor extern</li></ul>
+      <span class="open">Obrir la demo →</span>
+    </a>
+    <a class="card" href="./incidents/">
+      <div class="eyebrow">INCIDÈNCIES · CAS MUNICIPAL</div>
+      <h2>Incidències de serveis municipals</h2>
+      <p>Circuit d’incidències d’un ajuntament: avís de l’operari des del mòbil, assignació a la brigada, pretancament amb fotos i validació municipal.</p>
+      <ul><li>Alta mòbil: què passa, on i foto</li><li>Perfils de recepció, brigada i validació</li><li>Ordre de treball imprimible i mapa</li><li>Derivació excepcional a NC</li></ul>
+      <span class="open">Obrir la demo →</span>
+    </a>
+    <div class="card soon">
+      <div class="eyebrow">PROPERAMENT</div>
+      <h2>Altres mòduls</h2>
+      <p>Accions correctives i de millora, auditories, documents dins Google o Microsoft, riscos i indicadors s’afegiran aquí, cadascun a la seva ruta.</p>
+      <span class="open">En preparació</span>
+    </div>
+  </div>
+</main>
+<footer>Qualiteasy Internet Solutions · Demostracions sense backend ni dades reals.</footer>
+</body></html>
