@@ -62,7 +62,7 @@ const DemoStore = (() => {
   const read = options => options.body ? JSON.parse(options.body) : {};
   const urlFor = file => `data:${file.content_type || 'application/octet-stream'};base64,${file.data}`;
   const makeFiles = (files, phase) => (files || []).map(file => ({ name: file.name, phase, image: (file.content_type || '').startsWith('image/'), url: urlFor(file) }));
-  const actor = role => ({ brigada: 'Operari Prova', brigada_suport: 'Operari Suport Prova', municipal: 'Ajuntament · recepció', validador: 'Validador Prova' }[role] || 'Ajuntament');
+  const actor = role => ({ brigada: 'Operari Prova', brigada_suport: 'Operari Suport Prova', municipal: 'Ajuntament · recepció', validador: 'Validador Prova', cap_brigada: 'Cap de Brigada (prova)', responsable_servei: 'Responsable del servei (prova)' }[role] || 'Ajuntament');
   const addEvent = (item, kind, who, detail) => item.events.push({ kind, actor: who, detail, created_at: now() });
   function create(data, brigade) {
     const files = brigade ? makeFiles(data.photo ? [data.photo] : [], 'Avís') : makeFiles(data.files, 'Avís');
@@ -106,6 +106,19 @@ const DemoStore = (() => {
         const files = makeFiles(data.files, 'Tancament'); item.attachments.push(...files); item.photos.push(...files.filter(f => f.image));
         addEvent(item, 'Tancament validat', actor(role), data.closure_reason);
       }
+    } else if (kind === 'update') {
+      if (!['municipal', 'validador'].includes(role) || item.state_id === 4) throw Error('Només l’Ajuntament pot editar una incidència oberta.');
+      if (!data.what || !data.where) throw Error('Cal indicar què passa i on.');
+      item.title = '[MOSTRA ALELLA] ' + data.what; item.location = data.where; item.origin = data.origin || item.origin; item.category = data.category;
+      Object.assign(item.metadata, { origin_department: data.origin_department, target_department: data.target_department, category: data.category, priority: data.priority, cause: data.cause });
+      addEvent(item, 'Dades editades', actor(role), 'Fitxa completada o corregida.');
+    } else if (kind === 'followup') {
+      const assigned = { brigada: 4, brigada_suport: 6 }[role];
+      if (item.state_id === 4 || !(['municipal', 'validador', 'cap_brigada', 'responsable_servei'].includes(role) || (assigned && item.owner_id === assigned))) throw Error('Només l’Ajuntament, els responsables i l’operari assignat poden afegir seguiments a una incidència oberta.');
+      if (!data.text) throw Error('Cal escriure el seguiment.');
+      const files = makeFiles(data.files, 'Seguiment'); item.attachments.push(...files); item.photos.push(...files.filter(f => f.image));
+      (item.followups ||= []).push({ author: actor(role), at: now(), text: data.text, files });
+      addEvent(item, 'Seguiment', actor(role), data.text);
     } else if (kind === 'nc') {
       if (!['municipal', 'validador'].includes(role) || item.nc) throw Error('La NC ja existeix o el perfil no la pot crear.');
       item.nc = { reference: `NC-DEMO-${String(nextNc++).padStart(3, '0')}`, status: 'Oberta · demostració', reason: data.reason, cause: data.cause };
@@ -126,7 +139,7 @@ const DemoStore = (() => {
     }
     if (url.pathname === '/api/incidents' && options.method === 'POST') return create(read(options), true);
     if (url.pathname === '/api/municipal-incidents' && options.method === 'POST') return create(read(options), false);
-    const match = url.pathname.match(/^\/api\/incidents\/(\d+)\/(assign|preclose|return|close|nc)$/);
+    const match = url.pathname.match(/^\/api\/incidents\/(\d+)\/(assign|preclose|return|close|nc|update|followup)$/);
     if (match && options.method === 'POST') {
       const item = cases.find(i => i.id === Number(match[1]));
       if (!item) throw Error('Incidència no trobada.');

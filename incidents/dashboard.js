@@ -173,6 +173,13 @@ function renderDetail(i) {
       info('Data de tancament', dateText(m.closed_at)), info('Motiu de tancament', m.closure_reason));
     body.append(section('Pretancament i validació', closure));
   }
+  const follow = elem('div');
+  if (i.followups?.length) for (const f of i.followups) {
+    const row = elem('div', 'timeline-row'); row.append(elem('strong', '', f.author), elem('span', '', dateText(f.at)), paragraph(f.text));
+    for (const file of f.files || []) { const a = elem('a', '', file.name); a.href = file.url; a.target = '_blank'; a.rel = 'noopener noreferrer'; row.append(a); }
+    follow.append(row);
+  } else follow.append(paragraph('Encara no hi ha seguiments. Els responsables i l’operari assignat poden deixar constància de com va la feina sense pretancar-la.', 'hint'));
+  body.append(section('Seguiments', follow));
   if (i.attachments?.length) {
     const items = elem('ul', 'attachment-list');
     for (const file of i.attachments) {
@@ -195,6 +202,11 @@ function renderDetail(i) {
     actions.append(button('Pretancar amb fotografies', 'primary', () => openPreclose(i)));
   if ((role === 'municipal' || role === 'validador') && i.state_id === 8)
     actions.append(button('Validar o retornar', 'primary', () => openValidate(i)));
+  const assignedHere = roleOwnerIds[role] && i.owner_id === roleOwnerIds[role];
+  if (i.state_id !== 4 && (['municipal', 'validador', 'cap_brigada', 'responsable_servei'].includes(role) || assignedHere))
+    actions.append(button('Afegir seguiment', 'secondary', () => openFollowup(i)));
+  if ((role === 'municipal' || role === 'validador') && i.state_id !== 4)
+    actions.append(button('Editar dades', 'secondary', () => openEdit(i)));
   if (i.state_id !== 9) {
     actions.append(button('Veure / imprimir ordre de treball', 'secondary', () => printOrder(i)));
   }
@@ -240,6 +252,14 @@ function openAssign(i) {
   $('assign-service-lead').value = m.service_lead || 'Responsable del servei (prova)';
   $('assign-status').textContent = ''; $('assign-dialog').showModal();
 }
+function openEdit(i) {
+  selectedId = i.id; const m = i.metadata || {};
+  $('edit-what').value = title(i); $('edit-where').value = i.location || ''; $('edit-origin').value = i.origin || 'ajuntament';
+  $('edit-origin-department').value = m.origin_department || ''; $('edit-target-department').value = m.target_department || '';
+  $('edit-category').value = m.category || i.category || ''; $('edit-priority').value = m.priority || ''; $('edit-cause').value = m.cause || '';
+  $('edit-status').textContent = ''; $('edit-dialog').showModal();
+}
+function openFollowup(i) { selectedId = i.id; $('followup-form').reset(); $('followup-status').textContent = ''; $('followup-dialog').showModal(); }
 function openPreclose(i) { selectedId = i.id; $('preclose-form').reset(); $('preclose-status').textContent = ''; $('preclose-dialog').showModal(); }
 function openValidate(i) { selectedId = i.id; $('validate-form').reset(); $('validation-status').textContent = ''; $('validate-dialog').showModal(); }
 function openNc(i) { selectedId = i.id; $('nc-form').reset(); $('nc-status').textContent = ''; $('nc-dialog').showModal(); }
@@ -284,6 +304,7 @@ $('municipal-where').addEventListener('input', () => {
       for (const match of matches) {
         const b = button(match.label, '', () => {
           $('municipal-where').value = match.label; municipalPoint = { lat: match.lat, lon: match.lon }; list.hidden = true;
+          $('municipal-location-note').textContent = 'Punt aproximat seleccionat. Revisa l’adreça abans de registrar.';
         }); list.append(b);
       }
       list.hidden = !matches.length;
@@ -327,6 +348,31 @@ $('validate-form').addEventListener('submit', e => {
     return postAction(selectedId, 'close', { closure_reason: $('validation-reason').value,
       files: await Promise.all(files.map(filePayload)) });
   });
+});
+$('edit-form').addEventListener('submit', e => {
+  e.preventDefault(); submit(e.target, 'edit-status', () => postAction(selectedId, 'update', {
+    what: $('edit-what').value.trim(), where: $('edit-where').value.trim(), origin: $('edit-origin').value,
+    origin_department: $('edit-origin-department').value, target_department: $('edit-target-department').value,
+    category: $('edit-category').value, priority: $('edit-priority').value, cause: $('edit-cause').value }));
+});
+$('followup-form').addEventListener('submit', e => {
+  e.preventDefault(); submit(e.target, 'followup-status', async () => {
+    const files = [...$('followup-files').files];
+    if (files.length > 3) throw Error('Pots adjuntar fins a tres fitxers.');
+    return postAction(selectedId, 'followup', { text: $('followup-text').value, files: await Promise.all(files.map(filePayload)) });
+  });
+});
+$('municipal-gps').addEventListener('click', () => {
+  const note = $('municipal-location-note');
+  if (!navigator.geolocation) { note.textContent = 'Aquest navegador no ofereix GPS.'; return; }
+  note.textContent = 'Buscant la posició…';
+  navigator.geolocation.getCurrentPosition(position => {
+    const { latitude: lat, longitude: lon, accuracy } = position.coords;
+    municipalPoint = { lat, lon };
+    if (!$('municipal-where').value.trim()) $('municipal-where').value = `Posició GPS ${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+    note.textContent = `Posició aproximada (±${Math.round(accuracy)} m). Escriu o comprova el carrer.`;
+  }, () => { note.textContent = 'No s’ha pogut obtenir la posició. Escriu el carrer manualment.'; },
+  { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
 });
 $('nc-form').addEventListener('submit', e => {
   e.preventDefault(); submit(e.target, 'nc-status', () => postAction(selectedId, 'nc',

@@ -59,13 +59,12 @@ intakePhoto.addEventListener('change', () => {
 intakeForm.addEventListener('submit', async event => {
   event.preventDefault();
   const file = intakePhoto.files[0];
-  if (!file) { intakeStatus('Afegeix una fotografia.', true); return; }
-  if (file.size > 8 * 1024 * 1024) { intakeStatus('La fotografia supera els 8 MB.', true); return; }
+  if (file && file.size > 8 * 1024 * 1024) { intakeStatus('La fotografia supera els 8 MB.', true); return; }
   const send = document.getElementById('send');
   send.disabled = true;
   intakeStatus('Afegint l’avís a la demo…');
   try {
-    const encoded = await new Promise((resolve, reject) => {
+    const encoded = file && await new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(String(reader.result).split(',')[1]);
       reader.onerror = reject;
@@ -73,7 +72,7 @@ intakeForm.addEventListener('submit', async event => {
     });
     const result = await DemoStore.request('/api/incidents', { method: 'POST', body: JSON.stringify({
       what: intakeWhat.value.trim(), where: intakeWhere.value.trim(),
-      photo: { name: file.name, content_type: file.type, data: encoded }, gps: intakePoint
+      photo: file ? { name: file.name, content_type: file.type, data: encoded } : null, gps: intakePoint
     }) });
     intakeForm.reset();
     intakePoint = null;
