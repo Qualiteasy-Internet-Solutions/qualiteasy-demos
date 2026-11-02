@@ -24,8 +24,9 @@ const plusDays = n => new Date(Date.parse(today) + n * 864e5).toISOString().slic
 const me = () => cat.users.find(u => u.role === role).id;
 const isQ = () => role === 'qualitat';
 const userName = id => cat.users.find(u => u.id === Number(id))?.name || '—';
-const subLabel = v => Object.values(cat.suborigins).map(s => s[v]).find(Boolean);
-const label = (kind, v) => !v ? '—' : kind === 'processes' ? cat.processes.find(p => p.id === v)?.name : kind === 'suborigins' ? subLabel(v) || v : cat[kind]?.[v] || v;
+const parentOf = { suborigins: 'origins', subreferences: 'references' };
+const subLabel = (kind, v) => Object.values(cat[kind]).map(s => s[v]).find(Boolean);
+const label = (kind, v) => !v ? '—' : kind === 'processes' ? cat.processes.find(p => p.id === v)?.name : parentOf[kind] ? subLabel(kind, v) || v : cat[kind]?.[v] || v;
 const person = id => { const u = cat.users.find(x => x.id === Number(id)); return u ? `${u.name} · ${u.position}` : '—'; };
 const navByRole = { qualitat: ['list', 'actions', 'reqs', 'stats', 'config'], proces: ['list', 'actions', 'reqs', 'stats'], compres: ['list', 'actions', 'stats'],
   accio: ['actions', 'list'], direccio: ['stats', 'list', 'reqs'], auditor: ['reqs', 'list', 'stats'] };
@@ -39,7 +40,11 @@ const statePill = n => elem('span', 'pill ' + stateClass[n.state], cat.states[n.
 const actionPill = a => a.status === 'feta' ? elem('span', 'pill closed', 'Tancada') : overdue(a) ? elem('span', 'pill overdue', 'Vençuda') : elem('span', 'pill work', 'Pendent');
 const typePill = a => elem('span', 'pill type-' + a.type, { correccio: 'Correcció', correctiva: 'Correctiva', preventiva: 'Preventiva' }[a.type]);
 const people = () => cat.users.filter(u => u.role !== 'auditor').map(u => [u.id, `${u.name} · ${u.position}`]);
-function optionsFor(kind) { return kind === 'people' ? people() : kind === 'processes' ? cat.processes.map(p => [p.id, p.name]) : kind === 'suborigins' ? Object.entries(cat.suborigins).flatMap(([o, s]) => Object.entries(s).map(([k, v]) => [k, `${cat.origins[o]} › ${v}`])) : Object.entries(cat[kind]); }
+function optionsFor(kind) { return kind === 'people' ? people() : kind === 'processes' ? cat.processes.map(p => [p.id, p.name]) : parentOf[kind] ? Object.entries(cat[kind]).flatMap(([o, s]) => Object.entries(s).map(([k, v]) => [k, `${cat[parentOf[kind]][o]} › ${v}`])) : Object.entries(cat[kind]); }
+// Valors de baixa: no surten a les altes ni a les edicions, excepte el que la NC ja té (keep). Els filtres els mantenen per poder cercar les NC antigues.
+const active = (kind, k) => !(cat.retired[`${kind}:${k}`] <= today);
+const live = (kind, keep) => optionsFor(kind).filter(([k]) => active(kind, k) || [].concat(keep).includes(k));
+const children = (kind, parent, keep) => Object.entries(cat[kind][parent] || {}).filter(([k]) => active(kind, k) || k === keep);
 function options(select, entries, value, blank) { select.replaceChildren(...(blank ? [['', blank]] : []).concat(entries).map(([v, t]) => { const o = elem('option', '', t); o.value = v; return o; })); if (value !== undefined && value !== null) select.value = value; }
 
 // L'API real farà fetch a les mateixes rutes; el rol sortirà del token, no del paràmetre.
@@ -85,16 +90,17 @@ function filterValues() { return Object.fromEntries(new FormData($('filters')).e
 function filtered() {
   const f = filterValues(), text = (f.text || '').toLowerCase();
   return ncs.filter(n => (f.historic || !n.historic)
-    && (!f.state || (f.state === 'open' ? isOpen(n) : f.state === 'activa' ? ['analisi', 'accions'].includes(n.state) : n.state === f.state))
+    && (!f.state || (f.state === 'open' ? isOpen(n) || n.historic : f.state === 'activa' ? ['analisi', 'accions'].includes(n.state) : n.state === f.state))
     && (!f.expired || (f.expired === 'yes') === expired(n))
     && (!f.number || n.number.toLowerCase().includes(f.number.toLowerCase()))
-    && (!text || [n.title, n.description, label('origins', n.origin), n.origin_ref].join(' ').toLowerCase().includes(text))
-    && ['origin', 'suborigin', 'dept_origin', 'dept_target', 'client', 'supplier', 'product', 'phase'].every(k => !f[k] || n[k] === f[k])
+    && (!text || [n.title, n.description, label('origins', n.origin), n.reference && label('references', n.reference), n.origin_ref].join(' ').toLowerCase().includes(text))
+    && ['origin', 'suborigin', 'reference', 'subreference', 'dept_origin', 'dept_target', 'client', 'supplier', 'product', 'phase'].every(k => !f[k] || n[k] === f[k])
     && (!f.location || n.locations.includes(f.location))
     && (!f.owner_id || n.owner_id === Number(f.owner_id))
     && (!f.from || n.detected_at >= f.from) && (!f.to || n.detected_at <= f.to)
     && ((!f.action_from && !f.action_to) || n.actions.some(a => (!f.action_from || a.due >= f.action_from) && (!f.action_to || a.due <= f.action_to))));
 }
+function groupRow(text, cols) { const tr = elem('tr', 'group'), td = elem('td', '', text); td.colSpan = cols; tr.append(td); return tr; }
 function cell(tr, labelText, content, cls) { const td = elem('td', cls); td.dataset.label = labelText; if (content instanceof Node) td.append(content); else td.textContent = content ?? '—'; tr.append(td); return td; }
 function renderList() {
   const open = ncs.filter(n => isOpen(n) && !n.historic);
@@ -104,7 +110,7 @@ function renderList() {
   body.replaceChildren();
   const groups = filterValues().group ? Object.entries(rows.reduce((g, n) => ((g[n.owner_id ? userName(n.owner_id) : 'Sense responsable'] ||= []).push(n), g), {})) : [[null, rows]];
   for (const [name, list] of groups) {
-    if (name) { const tr = elem('tr', 'group'); const td = elem('td', '', `${name} · ${list.length}`); td.colSpan = 10; tr.append(td); body.append(tr); }
+    if (name) body.append(groupRow(`${name} · ${list.length}`, 10));
     for (const n of list) {
       const tr = elem('tr', n.historic ? 'historic' : ''); tr.tabIndex = 0;
       tr.addEventListener('click', () => go('nc/' + n.id)); tr.addEventListener('keydown', e => { if (e.key === 'Enter') go('nc/' + n.id); });
@@ -130,18 +136,18 @@ function downloadCsv(name, header, rows) {
   const a = elem('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 $('export-csv').addEventListener('click', () => downloadCsv('no-conformitats.csv',
-  ['Núm. NC', 'Data', 'Problema', 'Origen', 'Referència', 'Dept. origen', 'Dept. destí', 'Responsable', 'Client', 'Proveïdor', 'Caducitat', 'Estat', 'Accions', 'Accions tancades', 'Causa', 'Data tancament', 'Motiu tancament', 'Eficàcia verificada'],
-  filtered().map(n => [n.number, n.detected_at, n.title, label('origins', n.origin), n.origin_ref, label('departments', n.dept_origin), label('departments', n.dept_target),
+  ['Núm. NC', 'Data', 'Problema', 'Origen', 'Referència', 'Subreferència', 'Detall de l’origen', 'Dept. origen', 'Dept. destí', 'Responsable', 'Client', 'Proveïdor', 'Caducitat', 'Estat', 'Accions', 'Accions tancades', 'Causa', 'Data tancament', 'Motiu tancament', 'Eficàcia verificada'],
+  filtered().map(n => [n.number, n.detected_at, n.title, label('origins', n.origin), n.reference && label('references', n.reference), n.subreference && label('subreferences', n.subreference), n.origin_ref, label('departments', n.dept_origin), label('departments', n.dept_target),
     n.owner_id ? userName(n.owner_id) : '', label('clients', n.client), label('suppliers', n.supplier), n.due_date, cat.states[n.state], n.actions.length,
     n.actions.filter(a => a.status === 'feta').length, n.root_cause, n.closing?.date, n.closing?.reason, n.verification?.effective ? 'Sí' : 'No'])));
 $('export-detail').addEventListener('click', () => downloadCsv('no-conformitats-detall.csv',
   ['Núm. NC', 'Data', 'Problema', 'Origen', 'Suborigen', 'Dept. origen', 'Dept. destí', 'Responsable NC', 'Estat', 'Causa', 'Ordre', 'Tipus acció', 'Acció', 'Responsable acció', 'Data límit', 'Tancament acció',
-    'Seguiments de l’acció', 'Seguiments de la NC', 'Relacions', 'Temps previst', 'Temps real', 'Cost total', 'Verificació', 'Data tancament', 'Motiu tancament'],
+    'Seguiments de l’acció', 'Seguiments de la NC', 'Relacions', ...(settings.costs ? ['Temps previst', 'Temps real', 'Cost total'] : []), 'Verificació', 'Data tancament', 'Motiu tancament'],
   filtered().flatMap(n => (n.actions.length ? n.actions : [null]).map(a => [n.number, n.detected_at, n.title, label('origins', n.origin), label('suborigins', n.suborigin),
     label('departments', n.dept_origin), label('departments', n.dept_target), n.owner_id ? userName(n.owner_id) : '', cat.states[n.state], n.root_cause,
     a?.order, a && cat.actionTypes[a.type], a?.text, a && owners(a).map(userName).join(', '), a?.due, a?.done_at?.slice(0, 10), a?.followups.map(f => `${f.author}: ${f.text}`).join(' | '),
-    n.followups.map(f => `${f.author}: ${f.text}`).join(' | '), n.links.map(l => l.ref).join(', '), n.cost.hours_planned, n.cost.hours_real,
-    n.cost.items.reduce((s, i) => s + (Number(i.amount) || 0), 0) || '', n.verification?.notes, n.closing?.date, n.closing?.reason]))));
+    n.followups.map(f => `${f.author}: ${f.text}`).join(' | '), n.links.map(l => l.ref).join(', '), ...(settings.costs ? [n.cost.hours_planned, n.cost.hours_real, n.cost.items.reduce((s, i) => s + (Number(i.amount) || 0), 0) || ''] : []),
+    n.verification?.notes, n.closing?.date, n.closing?.reason]))));
 $('filters').addEventListener('input', renderList);
 $('filters').addEventListener('reset', () => setTimeout(renderList));
 
@@ -162,14 +168,15 @@ function toolbar(n) {
     n.state === 'analisi' && n.can_edit && button(n.cycle > 1 ? 'Reanalitzar i planificar' : 'Anàlisi i pla d’accions', 'primary', () => openAnalysis(n)),
     n.state === 'verificacio' && (isQ() || me() === n.verifier_id) && button('Verificar i tancar', 'primary', () => openVerify(n)));
   add('Afegir',
-    n.can_edit && button(n.state === 'registrada' ? '+ Correcció' : '+ Acció', 'secondary', () => openAction(n, null)),
+    n.can_edit && button('+ Acció', 'secondary', () => openAction(n, null)),
     n.can_follow && button('+ Seguiment', 'secondary', () => openFollowup(null)),
     n.can_follow && button('+ Document', 'secondary', () => openDialog('docs-dialog')),
     n.can_edit && button('Relacionar / crear registre', 'secondary', openLink));
   add('Fitxa',
     n.can_edit && button('Editar fitxa', 'secondary', () => openEdit(n)),
     isOpen(n) && (n.can_follow || isQ()) && button('Enviar notificació', 'secondary', openNotify),
-    button('Imprimir comunicat', 'secondary', () => print()),
+    button('Imprimir NC', 'secondary', () => print()),
+    isQ() && !isOpen(n) && !n.historic && button('Passar a històric', 'secondary', () => submitDirect(`/api/ncs/${n.id}/historic`)),
     canDelete && button('Esborrar', 'danger', () => openDialog('delete-dialog')));
   return bar;
 }
@@ -209,21 +216,23 @@ function renderNC() {
   const n = current;
   if (!n) { root.append(paragraph('Aquesta NC no existeix o no és visible amb aquest perfil.', 'empty'), button('← Tornar al llistat', 'secondary', () => go('list'))); return; }
   const head = elem('section', 'nc-head'), left = elem('div'), badges = elem('div', 'badge-stack');
-  left.append(elem('div', 'eyebrow', `NO CONFORMITAT ${n.number}`), elem('h1', '', n.title), elem('div', 'detail-sub', `${label('origins', n.origin)}${n.origin_ref ? ' · ' + n.origin_ref : ''} · ${label('processes', n.process)}`));
+  left.append(elem('div', 'eyebrow', `NO CONFORMITAT ${n.number}`), elem('h1', '', n.title), elem('div', 'detail-sub', [label('origins', n.origin), n.origin_ref, n.process && label('processes', n.process)].filter(Boolean).join(' · ')));
   badges.append(statePill(n));
   if (expired(n)) badges.append(elem('span', 'pill overdue', 'Caducada'));
   if (n.historic) badges.append(elem('span', 'pill closed', 'Històric'));
   if (n.cycle > 1) badges.append(elem('span', isOpen(n) ? 'pill overdue' : 'pill closed', isOpen(n) ? `Reoberta · cicle ${n.cycle}` : `${n.cycle} cicles d’anàlisi`));
   head.append(left, badges);
   const layout = elem('div', 'nc-layout'), main = elem('div', 'nc-main'), side = elem('aside', 'nc-side');
-  main.append(section('Dades generals', grid(['Núm. NC', n.number], ['Data', dateText(n.detected_at)], ['Autor', userName(n.author_id)],
-    ['Suborigen', label('suborigins', n.suborigin)], ['Departament d’origen', label('departments', n.dept_origin)], ['Departament destí', label('departments', n.dept_target)], ['Àmbit / servei', label('scopes', n.scope)],
+  const hasSub = (kind, parent, value) => value || children(kind, parent).length;
+  main.append(section('Dades generals', grid(...[['Núm. NC', n.number], ['Data', dateText(n.detected_at)], ['Autor', userName(n.author_id)],
+    hasSub('suborigins', n.origin, n.suborigin) && ['Suborigen', label('suborigins', n.suborigin)], ['Referència', label('references', n.reference)],
+    hasSub('subreferences', n.reference, n.subreference) && ['Subreferència', label('subreferences', n.subreference)], ['Detall de l’origen', n.origin_ref], ['Departament d’origen', label('departments', n.dept_origin)], ['Departament destí', label('departments', n.dept_target)], ['Àmbit / servei', label('scopes', n.scope)],
     ['Client', label('clients', n.client)], ['Proveïdor', label('suppliers', n.supplier)], ['Producte / servei', label('products', n.product)],
-    ['Tipus de problema', label('phases', n.phase)], ['On es detecta', n.locations.map(l => label('locations', l)).join(', ') || '—'], ['Caducitat', dateText(n.due_date)])));
+    ['Tipus de problema', label('phases', n.phase)], ['On es detecta', n.locations.map(l => label('locations', l)).join(', ') || '—'], ['Caducitat', dateText(n.due_date)]].filter(Boolean))));
   const pc = elem('div', 'work-summary'); pc.append(info('Problema', n.description), info('Causa', n.root_cause || 'Pendent d’analitzar'), info('Causa primària', label('causes', n.cause_id)));
   main.append(section('Problema i causa', pc), section('Requisits afectats', reqChips(n.requirements)));
   const plan = elem('div');
-  if (!n.actions.length) plan.append(paragraph('Encara no hi ha correccions ni accions.', 'hint'));
+  if (!n.actions.length) plan.append(paragraph('Encara no hi ha correccions ni accions. Afegeix-les amb «+ Acció».', 'hint'));
   for (const a of n.actions.slice().sort((x, y) => x.order - y.order)) plan.append(actionNode(n, a));
   main.append(section(`Correccions i accions (${n.actions.filter(a => a.status === 'feta').length}/${n.actions.length} tancades)`, plan));
   const fol = elem('div'); if (!n.followups.length) fol.append(paragraph('Cap seguiment global.', 'hint')); n.followups.map((f, i) => [f, i]).reverse().forEach(([f, i]) => fol.append(followNode(f, () => openEditFollowup(f, `/api/ncs/${n.id}/followups`, { edit: i }))));
@@ -245,10 +254,12 @@ function renderNC() {
   if (n.verification) close.append(elem('div', 'verify-box ok', `Eficàcia verificada · ${n.verification.by} · ${dateText(n.verification.at)} — ${n.verification.notes}`));
   if (n.closing) close.append(grid(['Data de tancament', dateText(n.closing.date)], ['Motiu', n.closing.reason], ['Paraula clau', label('keywords', n.closing.keyword)]));
   else if (isOpen(n)) close.append(paragraph('No es pot tancar fins que totes les accions estiguin tancades i se n’hagi verificat l’eficàcia.', 'hint'));
-  const c = n.cost, total = c.items.reduce((s, i) => s + (Number(i.amount) || 0), 0);
-  close.append(elem('h4', 'sub-title', 'Costos de la no qualitat'), grid(['Temps previst (h)', c.hours_planned], ['Temps real (h)', c.hours_real], ['Equip', c.team],
-    ...c.items.filter(i => i.supplier || i.amount).map(i => [i.supplier || 'Intern', i.amount ? `${i.amount} €` : '—']), ['Total', total ? `${total} €` : '—']));
-  if (c.notes) close.append(paragraph(c.notes, 'hint'));
+  if (settings.costs) {
+    const c = n.cost, total = c.items.reduce((s, i) => s + (Number(i.amount) || 0), 0);
+    close.append(elem('h4', 'sub-title', 'Costos de la no qualitat'), grid(['Temps previst (h)', c.hours_planned], ['Temps real (h)', c.hours_real], ['Equip', c.team],
+      ...c.items.filter(i => i.supplier || i.amount).map(i => [i.supplier || 'Intern', i.amount ? `${i.amount} €` : '—']), ['Total', total ? `${total} €` : '—']));
+    if (c.notes) close.append(paragraph(c.notes, 'hint'));
+  }
   main.append(section('Verificació i tancament', close));
   const timeline = elem('div'); for (const e of n.events.slice().reverse()) { const row = elem('div', 'timeline-row'); row.append(elem('strong', '', e.kind), elem('span', '', `${e.actor} · ${dateText(e.created_at)}`), elem('p', '', e.detail)); timeline.append(row); }
   main.append(section('Traça', timeline));
@@ -269,19 +280,25 @@ function renderNC() {
 // --- Accions (llistat) ---
 function renderActions() {
   const f = Object.fromEntries(new FormData($('action-filters')).entries()), body = $('action-table').tBodies[0]; body.replaceChildren();
+  const text = (f.text || '').toLowerCase();
   const rows = ncs.filter(n => !n.historic).flatMap(n => n.actions.map(a => ({ n, a })))
-    .filter(({ a }) => (!f.pending || a.status === 'pendent') && (!f.mine || owners(a).includes(me())) && (!f.overdue || overdue(a)))
+    .filter(({ n, a }) => (!f.pending || a.status === 'pendent') && (!f.mine || owners(a).includes(me())) && (!f.overdue || overdue(a))
+      && (!f.owner || owners(a).includes(Number(f.owner))) && (!f.type || a.type === f.type) && (!f.from || a.due >= f.from) && (!f.to || a.due <= f.to)
+      && (!text || [n.number, n.title, a.text].join(' ').toLowerCase().includes(text)))
     .sort((x, y) => x.a.due.localeCompare(y.a.due));
-  for (const { n, a } of rows) {
+  // Una acció amb dos responsables surt al grup de cadascun.
+  const groups = f.group ? Object.entries(rows.reduce((g, r) => { for (const id of owners(r.a)) (g[userName(id)] ||= []).push(r); return g; }, {})).sort(([x], [y]) => x.localeCompare(y)) : [[null, rows]];
+  for (const [name, list] of groups) { if (name) body.append(groupRow(`${name} · ${list.length}`, 8)); for (const { n, a } of list) {
     const tr = elem('tr'); tr.tabIndex = 0; const open = () => { focusAction = a.id; go('nc/' + n.id); };
     tr.addEventListener('click', open); tr.addEventListener('keydown', e => { if (e.key === 'Enter') open(); });
     cell(tr, 'NC', n.number, 'mono'); cell(tr, 'Ordre', String(a.order)); cell(tr, 'Tipus', typePill(a)); cell(tr, 'Acció', a.text);
     cell(tr, 'Responsables', owners(a).map(userName).join(', ')); cell(tr, 'Data límit', dateText(a.due), overdue(a) ? 'late' : ''); cell(tr, 'Tancament', dateText(a.done_at)); cell(tr, 'Estat', actionPill(a));
     body.append(tr);
-  }
+  } }
   if (!rows.length) { const tr = elem('tr'); const td = elem('td', 'loading', 'No hi ha accions amb aquests criteris.'); td.colSpan = 8; tr.append(td); body.append(tr); }
 }
 $('action-filters').addEventListener('input', renderActions);
+$('action-filters').addEventListener('reset', () => setTimeout(renderActions));
 
 // --- Requisits ---
 function renderReqs() {
@@ -349,19 +366,40 @@ $('stats-rd').addEventListener('click', () => { $('stats-status').textContent = 
 // --- Configuració ---
 let settings = {};
 async function loadSettings() { settings = (await api(`/api/settings?role=${role}`)).settings; }
-async function renderConfig() {
+$('config-form').addEventListener('submit', e => e.preventDefault());
+async function retireValue(kind, key, date) { await post('/api/catalogs/retire', { kind, key, date }); cat = await api(`/api/catalogs?role=${role}`); renderConfig(); }
+function catalogRow(kind, key, text, sub) {
+  const off = !active(kind, key), row = elem('li', 'cat-row' + (sub ? ' sub' : '') + (off ? ' off' : '')), date = elem('input');
+  date.type = 'date'; date.value = cat.retired[`${kind}:${key}`] || ''; date.disabled = !isQ(); date.title = 'Data de baixa'; date.setAttribute('aria-label', `Data de baixa de ${text}`);
+  date.addEventListener('change', () => retireValue(kind, key, date.value));
+  row.append(elem('span', '', text), date); return row;
+}
+function catalogTree(kind, extra = () => '') {
+  const parents = parentOf[kind], noun = kind === 'suborigins' ? 'suborígens' : 'subreferències';
+  return Object.entries(cat[parents]).flatMap(([p, name]) => [catalogRow(parents, p, name + extra(p) + (children(kind, p).length ? '' : ` · sense ${noun}: camp amagat`)),
+    ...Object.entries(cat[kind][p] || {}).map(([k, v]) => catalogRow(kind, k, v, true))]);
+}
+async function renderConfig(message = '') {
   const r = await api(`/api/settings?role=${role}`), form = $('config-form'); settings = r.settings; form.replaceChildren(elem('h3', '', 'Comportament del mòdul'));
   for (const [k, name] of Object.entries(r.names)) {
     const l = elem('label', 'check'), c = elem('input'); c.type = 'checkbox'; c.checked = r.settings[k]; c.disabled = !isQ();
     c.addEventListener('change', async () => { await post('/api/settings', { [k]: c.checked }); settings[k] = c.checked; $('config-status').textContent = 'Configuració desada.'; });
     l.append(c, ' ' + name); form.append(l);
   }
+  form.append(elem('h3', 'config-sub', 'Numeració'));
+  const ng = elem('div', 'form-grid number-grid'), fmt = field(ng, 'number_format', 'Format', 'text', r.settings.number_format), dig = field(ng, 'number_digits', 'Dígits', 'number', r.settings.number_digits), next = field(ng, 'next_number', 'Proper número', 'number', r.next_number);
+  for (const i of [fmt, dig, next]) i.disabled = !isQ();
+  const saveNumber = button('Desar la numeració', 'secondary', async () => { try { await post('/api/settings', { number_format: fmt.value, number_digits: dig.value, next_number: next.value }); renderConfig('Numeració desada.'); } catch (e) { $('config-status').textContent = e.message; } });
+  saveNumber.hidden = !isQ();
+  form.append(ng, elem('p', 'hint', `Propera NC: ${r.next_preview}. {ANY} és l’any i {NUM} el comptador. Si el format porta {ANY}, el comptador torna a 1 cada gener. Esborrar l’última NC n’allibera el número; esborrar-ne una d’anterior deixa el forat.`), saveNumber);
   form.append(elem('p', 'hint', `Recordatoris d’acció: ${r.settings.reminder_days} dies abans de la data límit i quan vencen. Usuaris que no reben correus de NC: ${cat.users.filter(u => u.no_nc_mail).map(u => u.name).join(', ') || 'cap'}.`));
-  const st = elem('p', 'hint'); st.id = 'config-status'; st.setAttribute('role', 'status'); form.append(st);
-  const cats = [['Orígens i suborígens', Object.entries(cat.origins).map(([k, v]) => `${v}${cat.suborigins[k] ? ' › ' + Object.values(cat.suborigins[k]).join(', ') : ''} · responsables: ${(cat.originManagers[k] || []).map(userName).join(', ')}`)],
-    ['Departaments i gestors', Object.entries(cat.departments).map(([k, v]) => `${v} · ${userName(cat.deptManagers[k])}`)], ['Llocs de detecció', Object.values(cat.locations)],
-    ['Tipus de problema', Object.values(cat.phases)], ['Causes primàries', Object.values(cat.causes)], ['Paraules clau de tancament', Object.values(cat.keywords)]];
-  $('config-catalogs').replaceChildren(...cats.map(([title, items]) => { const box = elem('div', 'side-box'); box.append(elem('small', '', title.toUpperCase())); const ul = elem('ul'); ul.append(...items.map(i => elem('li', '', i))); box.append(ul); return box; }));
+  const st = elem('p', 'hint', message); st.id = 'config-status'; st.setAttribute('role', 'status'); form.append(st);
+  const flat = kind => Object.entries(cat[kind]).map(([k, v]) => catalogRow(kind, k, v));
+  const cats = [['Orígens i suborígens', 'origenes', catalogTree('suborigins', k => cat.originManagers[k] ? ` · ${cat.originManagers[k].map(userName).join(', ')}` : '')],
+    ['Referències i subreferències', 'ReferenciasAcciones · sc_ReferenciasAcciones', catalogTree('subreferences')],
+    ['Departaments', 'departaments', Object.entries(cat.departments).map(([k, v]) => catalogRow('departments', k, `${v} · ${userName(cat.deptManagers[k])}`))], ['Llocs de detecció', 'DeteccionIncidencias', flat('locations')],
+    ['Tipus de problema', 'FasesProceso', flat('phases')], ['Causes primàries', '', flat('causes')], ['Paraules clau de tancament', '', flat('keywords')]];
+  $('config-catalogs').replaceChildren(...cats.map(([title, table, rows]) => { const box = elem('div', 'side-box'); box.append(elem('small', '', title.toUpperCase())); if (table) box.append(elem('span', 'hint', 'Taula ' + table)); const ul = elem('ul', 'cat-list'); ul.append(...rows); box.append(ul); return box; }));
 }
 
 // --- Diàlegs ---
@@ -398,8 +436,13 @@ function field(host, key, text, kind, value) {
   let input;
   if (kind === 'textarea') { input = elem('textarea'); input.rows = 3; input.value = value || ''; }
   else if (['text', 'date', 'number'].includes(kind)) { input = elem('input'); input.type = kind; input.value = value ?? ''; }
-  else { input = elem('select'); options(input, optionsFor(kind), value ?? '', '—'); }
+  else { input = elem('select'); options(input, live(kind, value), value ?? '', '—'); }
   input.id = id; input.dataset.key = key; wrap.append(l, input); host.append(wrap); return input;
+}
+// Suborigen i subreferència depenen del pare. Sense valors actius a la taula lateral, el camp no surt.
+function cascade(parent, child, kind, keep) {
+  const fill = () => { const list = children(kind, parent.value, keep); options(child, list, keep ?? '', '—'); if (child.selectedIndex < 0) child.value = ''; child.closest('div').hidden = !list.length; child.required = kind === 'suborigins' && settings.suborigin_required && !!list.length; };
+  parent.onchange = fill; fill();
 }
 function costFields(host, c) {
   host.replaceChildren(); const g = elem('div', 'form-grid cost-grid');
@@ -410,44 +453,45 @@ function costFields(host, c) {
 }
 
 $('new-nc').addEventListener('click', () => {
-  openDialog('new-dialog'); options($('new-origin'), optionsFor('origins')); newSuborigins(); options($('new-process'), optionsFor('processes')); options($('new-target'), optionsFor('departments'), '', '—'); $('new-date').value = today;
+  openDialog('new-dialog'); options($('new-origin'), live('origins')); options($('new-reference'), live('references'), '', '—'); options($('new-process'), live('processes'), '', '—'); options($('new-target'), live('departments'), '', '—'); $('new-date').value = today;
+  cascade($('new-origin'), $('new-suborigin'), 'suborigins'); cascade($('new-reference'), $('new-subreference'), 'subreferences');
   checkList($('new-locations'), 'locations', []);
-  $('new-target').required = settings.dept_target_required; $('new-suborigin').required = settings.suborigin_required; $('new-cause').required = settings.extended_validation;
+  $('new-target').required = settings.dept_target_required; $('new-cause').required = settings.extended_validation;
   $('new-suborigin-label').textContent = 'Suborigen' + (settings.suborigin_required ? '' : ' (opcional)'); $('new-cause-label').textContent = settings.extended_validation ? 'Causa' : 'Causa, si es coneix';
 });
-function newSuborigins() { options($('new-suborigin'), Object.entries(cat.suborigins[$('new-origin').value] || {}), '', '—'); }
-$('new-origin').addEventListener('change', newSuborigins);
-function checkList(host, kind, chosen) { host.replaceChildren(...optionsFor(kind).map(([v, t]) => { const l = elem('label', 'check'), c = elem('input'); c.type = 'checkbox'; c.value = v; c.checked = chosen.includes(v); l.append(c, ' ' + t); return l; })); }
+function checkList(host, kind, chosen) { host.replaceChildren(...live(kind, chosen).map(([v, t]) => { const l = elem('label', 'check'), c = elem('input'); c.type = 'checkbox'; c.value = v; c.checked = chosen.includes(v); l.append(c, ' ' + t); return l; })); }
 $('new-form').addEventListener('submit', e => { e.preventDefault(); submit(e.target, async () => {
   const files = await readFiles($('new-files'), 4);
-  const n = await post('/api/ncs', { title: $('new-title').value, description: $('new-description').value, origin: $('new-origin').value, origin_ref: $('new-ref').value, process: $('new-process').value, suborigin: $('new-suborigin').value,
+  const n = await post('/api/ncs', { title: $('new-title').value, description: $('new-description').value, origin: $('new-origin').value, reference: $('new-reference').value, subreference: $('new-subreference').value, origin_ref: $('new-ref').value, process: $('new-process').value, suborigin: $('new-suborigin').value,
     dept_target: $('new-target').value, detected_at: $('new-date').value, locations: picked($('new-locations')), root_cause: $('new-cause').value, correction: $('new-correction').value, files });
   current = n; history.replaceState(null, '', '#nc/' + n.id);
 }); });
 
 const editSchema = [
-  ['Identificació', [['title', 'Títol', 'text'], ['detected_at', 'Data', 'date'], ['origin', 'Origen', 'origins'], ['suborigin', 'Suborigen', 'suborigins'], ['origin_ref', 'Referència de l’origen', 'text'], ['scope', 'Àmbit / servei', 'scopes'], ['process', 'Procés', 'processes']]],
+  ['Identificació', [['title', 'Resum del problema', 'text'], ['detected_at', 'Data', 'date'], ['origin', 'Origen', 'origins'], ['suborigin', 'Suborigen', 'suborigins'], ['reference', 'Referència', 'references'], ['subreference', 'Subreferència', 'subreferences'], ['origin_ref', 'Detall de l’origen', 'text'], ['scope', 'Àmbit / servei', 'scopes'], ['process', 'Procés', 'processes']]],
   ['Departaments, responsables i dates', [['dept_origin', 'Departament d’origen', 'departments'], ['dept_target', 'Departament destí', 'departments'], ['owner_id', 'Responsable de la NC', 'people'],
     ['verifier_id', 'Responsable de verificació', 'people'], ['closer_id', 'Responsable de tancament', 'people'], ['due_date', 'Data de caducitat', 'date']]],
   ['Dades relacionades', [['client', 'Client', 'clients'], ['supplier', 'Proveïdor', 'suppliers'], ['product', 'Producte / servei', 'products'], ['phase', 'Tipus de problema', 'phases']]],
-  ['Problema i causa', [['description', 'Problema', 'textarea'], ['root_cause', 'Causa', 'textarea'], ['cause_id', 'Causa primària', 'causes']]]
+  ['Problema i causa', [['description', 'Problema detectat', 'textarea'], ['root_cause', 'Causa', 'textarea'], ['cause_id', 'Causa primària', 'causes']]]
 ];
 let readCost = null, editReqHost = null, editLocHost = null;
 function openEdit(n) {
   openDialog('edit-dialog'); const host = $('edit-fields'); host.replaceChildren();
   for (const [title, fields] of editSchema) { const fs = elem('fieldset', 'edit-block'); fs.append(elem('legend', '', title)); const g = elem('div', 'form-grid'); for (const [k, t, kind] of fields) field(g, k, t, kind, n[k]); fs.append(g); host.append(fs); }
+  const byKey = k => host.querySelector(`[data-key=${k}]`);
+  cascade(byKey('origin'), byKey('suborigin'), 'suborigins', n.suborigin); cascade(byKey('reference'), byKey('subreference'), 'subreferences', n.subreference);
   const lc = elem('fieldset', 'req-picker'); lc.append(elem('legend', '', 'On es detecta')); editLocHost = elem('div', 'check-cols'); lc.append(editLocHost); checkList(editLocHost, 'locations', n.locations); host.append(lc);
   const rq = elem('fieldset', 'req-picker'); rq.append(elem('legend', '', 'Requisits afectats')); editReqHost = elem('div'); rq.append(editReqHost); reqPicker(editReqHost, n.requirements); host.append(rq);
-  const cf = elem('fieldset', 'edit-block cost-block'); cf.append(elem('legend', '', 'Costos de la no qualitat')); const ch = elem('div'); cf.append(ch); host.append(cf); readCost = costFields(ch, n.cost);
+  if (settings.costs) { const cf = elem('fieldset', 'edit-block cost-block'); cf.append(elem('legend', '', 'Costos de la no qualitat')); const ch = elem('div'); cf.append(ch); host.append(cf); readCost = costFields(ch, n.cost); }
 }
 $('edit-form').addEventListener('submit', e => { e.preventDefault(); submit(e.target, () => {
   const d = Object.fromEntries([...$('edit-fields').querySelectorAll('.edit-block:not(.cost-block) [data-key]')].map(el => [el.dataset.key, el.value]));
   if (!d.cause_id) d.cause_id = null;
-  return post(`/api/ncs/${current.id}/update`, { ...d, locations: picked(editLocHost), requirements: picked(editReqHost), cost: readCost() });
+  return post(`/api/ncs/${current.id}/update`, { ...d, locations: picked(editLocHost), requirements: picked(editReqHost), ...(settings.costs ? { cost: readCost() } : {}) });
 }); });
 
 function openAccept(n) {
-  openDialog('accept-dialog'); const owner = cat.processes.find(p => p.id === n.process).owner_id;
+  openDialog('accept-dialog'); const owner = cat.processes.find(p => p.id === n.process)?.owner_id || cat.originManagers[n.origin]?.[0];
   options($('accept-owner'), people(), owner); options($('accept-verifier'), people(), n.verifier_id || 1); options($('accept-closer'), people(), owner);
   $('accept-due').value = plusDays(30); $('accept-analysis').value = plusDays(7); reqPicker($('accept-reqs'), n.requirements);
 }
@@ -457,7 +501,7 @@ $('accept-form').addEventListener('submit', e => { e.preventDefault(); submit(e.
 
 function openAnalysis(n) {
   openDialog('analysis-dialog');
-  $('an-root').value = n.root_cause || ''; options($('an-cause'), optionsFor('causes'), n.cause_id || '', 'Sense classificar'); reqPicker($('an-reqs'), n.requirements);
+  $('an-root').value = n.root_cause || ''; options($('an-cause'), live('causes', n.cause_id), n.cause_id || '', 'Sense classificar'); reqPicker($('an-reqs'), n.requirements);
   const pending = n.actions.filter(a => a.status === 'pendent' && a.type !== 'correccio');
   $('an-existing').textContent = pending.length ? `Ja hi ha ${pending.length} ${pending.length === 1 ? 'acció pendent' : 'accions pendents'}; pots afegir-ne més.` : 'Cal almenys una acció correctiva o preventiva.';
   $('an-actions').replaceChildren(...[0, 1, 2].map(i => {
@@ -475,7 +519,7 @@ $('analysis-form').addEventListener('submit', e => { e.preventDefault(); submit(
 
 let editingAction = null;
 function openAction(n, a) {
-  editingAction = a; openDialog('action-dialog'); $('action-title').textContent = a ? `Editar l’acció ${a.order}` : n.state === 'registrada' ? 'Nova correcció' : 'Nova acció';
+  editingAction = a; openDialog('action-dialog'); $('action-title').textContent = a ? `Editar l’acció ${a.order}` : 'Nova acció'; $('act-hint').hidden = n.state !== 'registrada';
   options($('act-type'), n.state === 'registrada' ? [['correccio', cat.actionTypes.correccio]] : Object.entries(cat.actionTypes), a?.type || (n.state === 'registrada' ? 'correccio' : 'correctiva'));
   options($('act-owner'), people(), a?.owner_id || n.owner_id || me()); options($('act-owner2'), people(), a?.owner2_id || '', '—');
   $('act-text').value = a?.text || ''; $('act-order').value = a?.order || n.actions.length + 1; $('act-due').value = a?.due || plusDays(30);
@@ -518,12 +562,13 @@ function openNotify() {
     const ids = [...new Set(who[k].filter(Boolean))]; if (!ids.length) continue;
     const l = elem('label', 'check'), c = elem('input'); c.type = 'checkbox'; c.value = k; c.checked = k === (n.owner_id ? 'responsable' : 'qualitat'); l.append(c, ` ${name}: ${ids.map(userName).join(', ')}`); host.append(l);
   }
-  $('notify-subject').value = `Notificació de la no conformitat ${n.number}`;
+  $('notify-subject').value = `Notificació de la no conformitat ${n.number}`; $('notify-external').value = cat.supplierEmails[n.supplier] || '';
 }
-$('notify-form').addEventListener('submit', e => { e.preventDefault(); submit(e.target, () => post(`/api/ncs/${current.id}/notify`, { groups: picked($('notify-groups')), subject: $('notify-subject').value, message: $('notify-message').value })); });
+$('notify-form').addEventListener('submit', e => { e.preventDefault(); submit(e.target, () => post(`/api/ncs/${current.id}/notify`, { groups: picked($('notify-groups')), external: $('notify-external').value.split(',').map(x => x.trim()).filter(Boolean), subject: $('notify-subject').value, message: $('notify-message').value })); });
 
 let readVerifyCost = null;
-function openVerify(n) { openDialog('verify-dialog'); options($('verify-keyword'), optionsFor('keywords'), '', 'Sense paraula clau'); $('verify-date').value = today; readVerifyCost = costFields($('verify-cost'), n.cost); }
+function openVerify(n) { openDialog('verify-dialog'); options($('verify-keyword'), live('keywords'), '', 'Sense paraula clau'); $('verify-date').value = today;
+  $('verify-cost-title').hidden = !settings.costs; $('verify-cost').replaceChildren(); readVerifyCost = settings.costs ? costFields($('verify-cost'), n.cost) : () => null; }
 $('verify-form').addEventListener('submit', e => { e.preventDefault(); submit(e.target, () => post(`/api/ncs/${current.id}/verify`, {
   effective: e.submitter.value === 'yes', notes: $('verify-notes').value, reason: $('verify-reason').value, keyword: $('verify-keyword').value, close_date: $('verify-date').value, cost: readVerifyCost() })); });
 
@@ -542,6 +587,6 @@ for (const b of document.querySelectorAll('[data-go]')) b.addEventListener('clic
 
 (async () => {
   cat = await api(`/api/catalogs?role=${role}`);
-  for (const s of document.querySelectorAll('#filters [data-cat]')) options(s, optionsFor(s.dataset.cat), '', 'Tots');
+  for (const s of document.querySelectorAll('#filters [data-cat], #action-filters [data-cat]')) options(s, optionsFor(s.dataset.cat), '', 'Tots');
   await loadSettings(); $('action-filters').mine.checked = role === 'accio'; renderRoles(); load();
 })();

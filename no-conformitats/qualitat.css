@@ -23,7 +23,7 @@
 .filter-grid label.check,.filter-row label.check{flex-direction:row;align-items:center;font-size:12px}
 .filter-grid input,.filter-grid select{padding:8px 9px;font-size:12px}
 .filter-row{display:flex;gap:16px;flex-wrap:wrap;align-items:end;margin-bottom:14px}
-.filter-row input{padding:8px 9px;font-size:12px}
+.filter-row input,.filter-row select{padding:8px 9px;font-size:12px}
 .table-wrap{background:white;border:1px solid var(--line);border-radius:14px;overflow:hidden}
 table.grid{width:100%;border-collapse:collapse;font-size:12px}
 table.grid th{text-align:left;background:#f3f6ef;color:#4b5d4d;font-size:11px;padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
@@ -132,4 +132,8 @@ table.compact td.name{position:relative}
 }
 .check-cols{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:0 12px}
 .config-box{background:white;border:1px solid var(--line);border-radius:14px;padding:16px 20px;margin-bottom:16px}.config-box h3{margin:0 0 8px;font-size:15px}
-.config-catalogs{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}.config-catalogs ul{margin:0;padding-left:18px;font-size:12px;line-height:1.6}
+.config-catalogs{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px}
+.config-sub{margin-top:18px!important}.number-grid{grid-template-columns:2fr 1fr 1fr;max-width:640px}
+.cat-list{list-style:none;margin:0;padding:0;font-size:12px}
+.cat-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:3px 0}.cat-row.sub{padding-left:16px}.cat-row.off span{text-decoration:line-through;color:#8a9586}
+.cat-row input{width:126px;flex:none;padding:3px 6px;font-size:11px}

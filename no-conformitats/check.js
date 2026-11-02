@@ -67,4 +67,49 @@ denied(() => post(`/api/ncs/${auto.id}/links`, 'proces', { create: true, type: '
 assert.ok(get('qualitat').find(n => n.number === 'NC-2026-014').notifications.some(x => x.subject === 'Recordatori d’acció'));
 // Esborrar històriques.
 assert.strictEqual(post('/api/ncs/purge', 'qualitat', { before: day(0) }).deleted, 1);
-console.log('OK: flux, accions, relacions, notificacions, històric, configuració i permisos');
+// Procés, referència i subreferència són opcionals; sense procés, activar cau al responsable de l'origen.
+const noProcess = post('/api/ncs', 'proces', { title: 'Sense procés', origin: 'reclamacio' });
+assert.strictEqual(post(`/api/ncs/${noProcess.id}/accept`, 'qualitat', { due_date: day(30) }).owner_id, 2);
+// Baixes de catàleg: el valor no es pot triar de nou però les NC que el tenen el conserven.
+denied(() => post('/api/catalogs/retire', 'proces', { kind: 'origins', key: 'altres', date: day(0) }));
+denied(() => post('/api/catalogs/retire', 'qualitat', { kind: 'users', key: '1', date: day(0) }));
+denied(() => post('/api/ncs', 'proces', { title: 'Baixa', origin: 'auditoria_interna', suborigin: 'ai_14001' }));
+post('/api/catalogs/retire', 'qualitat', { kind: 'references', key: 'ref_legal', date: day(1) });      // baixa futura: encara vàlid
+const retiredRef = post('/api/ncs', 'proces', { title: 'Encara vigent', origin: 'intern', reference: 'ref_legal' });
+post('/api/catalogs/retire', 'qualitat', { kind: 'references', key: 'ref_legal', date: day(0) });
+denied(() => post('/api/ncs', 'proces', { title: 'Ja no', origin: 'intern', reference: 'ref_legal' }));
+post(`/api/ncs/${retiredRef.id}/update`, 'proces', { reference: 'ref_legal', client: 'c1' });          // el conserva en editar
+post('/api/catalogs/retire', 'qualitat', { kind: 'references', key: 'ref_legal', date: '' });
+// Suborigen obligatori només si l'origen en té d'actius.
+post('/api/settings', 'qualitat', { suborigin_required: true });
+post('/api/ncs', 'proces', { title: 'Origen sense suborígens', origin: 'altres' });
+post('/api/settings', 'qualitat', { suborigin_required: false });
+// Numeració: format de l'entitat, número alliberat si s'esborra l'última i reinici anual.
+const number = () => S.request('/api/settings?role=qualitat');
+const year = new Date().getFullYear();
+denied(() => post('/api/settings', 'qualitat', { number_format: 'SENSE-COMPTADOR', number_digits: 3 }));
+denied(() => post('/api/settings', 'qualitat', { number_format: 'NC/{ANY}/{NUM}', number_digits: 4, next_number: 1 }));
+assert.strictEqual(number().settings.number_format, 'NC-{ANY}-{NUM}');                                // l'error no desa res
+post('/api/settings', 'qualitat', { number_format: 'NC/{ANY}/{NUM}', number_digits: 4, next_number: 40 });
+const n40 = post('/api/ncs', 'proces', { title: 'Quaranta', origin: 'intern' }), n41 = post('/api/ncs', 'proces', { title: 'Quaranta-u', origin: 'intern' });
+assert.strictEqual(n40.number, `NC/${year}/0040`);
+post(`/api/ncs/${n41.id}/delete`, 'proces');                                                          // l'última: s'allibera
+assert.strictEqual(number().next_number, 41);
+const n41b = post('/api/ncs', 'proces', { title: 'Reutilitza', origin: 'intern' });
+assert.strictEqual(n41b.number, `NC/${year}/0041`);
+const n42 = post('/api/ncs', 'proces', { title: 'Següent', origin: 'intern' });
+post(`/api/ncs/${n41b.id}/delete`, 'proces');                                                         // una del mig: forat
+assert.strictEqual(number().next_number, 43);
+const realNow = Date.now;
+Date.now = () => Date.UTC(year + 1, 0, 15);
+assert.strictEqual(post('/api/ncs', 'proces', { title: 'Any nou', origin: 'intern' }).number, `NC/${year + 1}/0001`);
+Date.now = realNow;
+// Notificació a externs sense usuari.
+denied(() => post(`/api/ncs/${auto.id}/notify`, 'proces', { external: ['no-es-correu'], message: 'x' }));
+assert.ok(post(`/api/ncs/${auto.id}/notify`, 'proces', { external: ['extern@exemple.com'], message: 'x' }).notifications.at(-1).recipient === 'extern@exemple.com');
+// Històric individual: només tancades o desestimades, i només qualitat.
+const closed = get('qualitat').find(n => n.number === 'NC-2026-012'), open = get('qualitat').find(n => n.number === 'NC-2026-016');
+denied(() => post(`/api/ncs/${closed.id}/historic`, 'proces'));
+denied(() => post(`/api/ncs/${open.id}/historic`, 'qualitat'));
+assert.ok(post(`/api/ncs/${closed.id}/historic`, 'qualitat').historic);
+console.log('OK: flux, accions, relacions, notificacions, històric, configuració, numeració, baixes i permisos');

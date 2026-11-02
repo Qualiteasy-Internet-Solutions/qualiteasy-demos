@@ -15,38 +15,55 @@ Perfils: `qualitat`, `proces`, `compres`, `accio` (tècnic), `direccio`, `audito
 
 | Pantalla | Funcions | Equivalent a Web35 |
 |---|---|---|
-| **Llistat** | Filtres (text, número, estat, caducades, origen, departament d’origen i destí, responsable, client, proveïdor, producte, tipus de problema, dates de detecció i de límit d’acció, històric), agrupació per responsable, exportació a Excel (CSV), impressió, seguiment ràpid per fila, pas a històric. | `NoConformidadesL`, `NoConformidadesC`, `NoConformidadesListado(XLS)`, `TraspasoHistorico` |
-| **Alta** | Curta: títol, problema, origen, procés, departament destí, data, lloc, correcció immediata feta i fotos. La resta es completa a la fitxa. | `NoConformidadesF` (alta) |
-| **Fitxa** | Dades generals, problema i causa, requisits, correccions i accions, seguiments globals, documents annexos, relacions, verificació i tancament amb costos, traça i notificacions. Barra d’accions segons permisos: activar/desestimar, anàlisi, + correcció/acció, + seguiment, + document, relacionar o crear registre (ACAP, acció de millora, incidència, auditoria), editar fitxa, enviar notificació per grups, imprimir comunicat, esborrar, verificar i tancar. | `NoConformidadesF`, `uctAccion`, `NoConformidadesSeguimientos(NC)`, `NoConformidadesCierre`, `NoConformidadesImprimir` |
-| **Accions** | Totes les correccions i accions amb termini; filtres de pendents, pròpies i vençudes. | Columnes d’accions de `NoConformidadesL` |
+| **Llistat** | Filtres (text, número, estat, inclosos «en anàlisi» i «accions en curs», caducades, origen, referència i subreferència, departament d’origen i destí, responsable, client, proveïdor, producte, tipus de problema, dates de detecció i de límit d’acció, històric), agrupació per responsable, exportació a Excel (CSV), impressió, seguiment ràpid per fila, pas a històric. | `NoConformidadesL`, `NoConformidadesC`, `NoConformidadesListado(XLS)`, `TraspasoHistorico` |
+| **Alta** | Curta: resum del problema, problema, origen, referència i subreferència (opcionals), procés (opcional), departament destí, data, lloc, correcció immediata feta i fotos. El suborigen i la subreferència només surten si tenen dades a la taula lateral. La resta es completa a la fitxa. | `NoConformidadesF` (alta) |
+| **Fitxa** | Dades generals, problema i causa, requisits, correccions i accions, seguiments globals, documents annexos, relacions, verificació i tancament amb costos, traça i notificacions. Barra d’accions segons permisos: activar/desestimar, anàlisi, + acció, + seguiment, + document, relacionar o crear registre (ACAP, acció de millora, incidència, auditoria), editar fitxa, enviar notificació per grups i a externs, imprimir NC, passar a històric, esborrar, verificar i tancar. | `NoConformidadesF`, `uctAccion`, `NoConformidadesSeguimientos(NC)`, `NoConformidadesCierre`, `NoConformidadesImprimir` |
+| **Accions** | Totes les correccions i accions amb termini; filtres de text, responsable, tipus, data límit, pendents, pròpies i vençudes; agrupació per responsable. | Columnes d’accions de `NoConformidadesL` |
 | **Requisits** | NC per requisit i marc (ISO 9001, ENS, requisits legals). | Nou |
 | **Estadístiques** | Per període: totals, obertes, tancades, desestimades, % d’eficàcia verificada, temps mitjà de tancament, accions vençudes; resums per origen, departament, client, proveïdor, autor i marc; Excel, impressió i «afegir a la revisió per la direcció». | `EstadistiquesNoConformidades`, `RDEstadistiquesNoConformidades` |
 
-**Accions dins la NC** (com `uctAccion`): tipus (correcció/acció immediata, correctiva, preventiva), ordre, responsable i segon responsable, data límit, seguiments amb documents, tancament parcial, edició i eliminació si no té seguiments.
+**Accions dins la NC** (com `uctAccion`): es creen sempre des de la fitxa amb «+ Acció». Tipus (correcció/acció immediata, correctiva, preventiva), ordre, responsable i segon responsable, data límit, seguiments amb documents, tancament parcial, edició i eliminació si no té seguiments.
 
 **Canvis respecte a Web35:**
 - Abans d’activar la NC només s’hi poden registrar correccions; activar-la exigeix responsable i data de caducitat (com Web35).
 - No es pot tancar amb accions obertes ni sense verificar l’eficàcia (Web35 ho permet amb una casella; als clients analitzats és la pràctica habitual).
 - Si la verificació no és eficaç, la NC es reobre en un cicle nou d’anàlisi.
 - Causa primària i paraula clau són opcionals: cap dels clients analitzats no en té els catàlegs configurats.
+- Estats actius: *en anàlisi* (hi ha responsable, falta la causa i el pla d’accions) i *accions en curs* (anàlisi feta, accions pendents). Quan totes les accions es tanquen, passa a verificació.
+- Històric: només NC tancades o desestimades, amb pas massiu (per data i estats) o individual (des de la fitxa). Queden de només lectura i es consulten amb «Inclou l’històric».
 
 Permisos per objecte inspirats en `clsPermisos.vb`: edita qualitat, el responsable de la NC o el gestor del departament d’origen o destí (l’autor, mentre no està activada); fa seguiment, a més, l’autor i els responsables de les accions; el tècnic només veu les NC on té accions; direcció i auditor extern només consulten.
 
 **Perfils i menú:** cada perfil veu les seves pestanyes i entra a la que li toca: qualitat (totes, més Configuració), responsable de procés i compres (NC, accions, requisits/estadístiques), tècnic («Les meves accions»), direcció (estadístiques) i auditor extern (requisits). Visibilitat com `CrearWhere` de Web35: qualitat, direcció i auditor ho veuen tot; la resta, les NC on intervenen o dels departaments que gestionen.
 
-**Configuració per client** (pantalla *Configuració*, paràmetres reals de Web35): `ActivarAutomaticamenteNCCPAMINC`, `DepartamentoDestinoObligatorio`, `OrigenesSuborigenesObligatorios`, `ValidacionExtendidaNCCPAM`; recordatoris d’acció (`FechaAlertaResponsable`); usuaris que no reben correus de NC (`NORecibirCorreoNC`); catàlegs (orígens i suborígens amb responsables, departaments i gestors, llocs de detecció…).
+**Configuració per client** (pantalla *Configuració*, paràmetres reals de Web35): `ActivarAutomaticamenteNCCPAMINC`, `DepartamentoDestinoObligatorio`, `OrigenesSuborigenesObligatorios`, `ValidacionExtendidaNCCPAM`; recordatoris d’acció (`FechaAlertaResponsable`); usuaris que no reben correus de NC (`NORecibirCorreoNC`); costos de la no qualitat activables (paràmetre nou); numeració amb format, dígits i proper número; taules laterals en ús amb la data de baixa de cada valor (orígens i suborígens, referències i subreferències, departaments, llocs de detecció…).
+
+Numeració: `{ANY}` i `{NUM}` al format. Amb `{ANY}`, el comptador torna a 1 cada gener. Esborrar l’última NC n’allibera el número; esborrar-ne una d’anterior deixa el forat, perquè no es reassigni un número ja comunicat. Web35 només té un comptador global editable (`Contadores.Num_NC`).
 
 ### Revisat a Web35 i encara no inclòs a la demo
 
 | Funció de Web35 | Ús als clients analitzats | Proposta |
 |---|---|---|
-| Referència / subreferència (`ReferenciasAcciones`, arbre) | Fundació 1%, Mecman i Díaz Álvarez 0% | Catàleg opcional més endavant. |
 | Mòduls separats d’accions correctives/preventives (`AccionesCorrPrev*`) i de millora (`AccionesMejora*`) | Actius (Díaz Álvarez 84 i 75, Mecman 78 i 95) | Demo pròpia; aquí només es relacionen o es creen des de la NC. |
 | Permís d’activar NC per usuari (`PuedeActivarNC`) i desactivar una NC activa | — | A la demo només activa qualitat. |
 | Xarxa de centres (`QEXarxa`) | Clients multicentre | Multicentre al model de clients (auditoria, §2). |
 | Opcions de llistat (`GestorPuedeVisualizarDepartamentoDestino`, `MostrarReferenciaEnGridGestion`, `OcultarDepartamentoEnGridAcciones`) i tria manual o automàtica de destinataris (`SeleccionarDestinatariosCorreosNCCPAMINC`) | Per instal·lació | Paràmetres de configuració. |
 | Editor de text enriquit per a problema, causa i seguiments; informes Crystal | — | Text amb format i impressió web. |
-| Comptadors de numeració editables per l’administrador | — | Numeració automàtica per any. |
+
+### A tenir en compte al producte real
+
+Punts de la revisió amb la Marta. Alguns la demo només els ensenya, i d’altres encara no hi són.
+
+| Tema | Què cal resoldre | A la demo |
+|---|---|---|
+| Etiquetes per client | Cada client ha de poder editar les etiquetes dels camps (p. ex. «Resum del problema»). | Etiquetes fixes. |
+| Permisos | Permisos a part dels perfils base, per usuari i per acció (`PuedeActivarNC` n’és un cas). | Només perfils base. |
+| Enviament a externs | Proveïdors i externs sense usuari han de rebre comunicats, incidències i altres registres: enviament real, contingut (PDF o enllaç), traça i dades personals. Aplica a tots els mòduls. | Només a NC, i en previsualització. |
+| Numeració | Assignar el número de forma atòmica i amb unicitat per client. Migrar `Contadores.Num_NC`. Confirmar si l’any és el de l’alta (a la demo) o el de la detecció. | Comptador en memòria. |
+| NC errònies | Confirmar quan es pot esborrar i quan cal desestimar, i la regla d’alliberar el número. | Esborrat lògic, sense accions ni seguiments. |
+| Baixes de catàleg | Web35 només té `borrado`, sense data, i als orígens `ActivoNC/AP/AM/INC` per mòdul: decidir si la baixa és global o per mòdul. Estendre-la a clients, proveïdors, productes i processos. | Baixa global amb data en els catàlegs de Configuració. |
+| Referències | L’arbre de `sc_ReferenciasAcciones` té diversos nivells (`IdReferenciaPare`). Web35 també té el text lliure `referencia`, que aquí és «Detall de l’origen»: confirmar si es manté. | Un sol nivell de subreferència. |
+| Altes de catàleg | Mantenir els valors de les taules laterals. | Només es poden donar de baixa. |
 
 ## Contracte d’API
 
@@ -54,11 +71,13 @@ Permisos per objecte inspirats en `clsPermisos.vb`: edita qualitat, el responsab
 
 | Crida | Ús |
 |---|---|
-| `GET /api/catalogs` | Usuaris, departaments, processos, orígens, clients, proveïdors, productes, tipus de problema, causes, paraules clau, tipus d’acció, grups de notificació, marcs i requisits. |
+| `GET /api/catalogs` | Usuaris, departaments, processos, orígens, referències, baixes, clients, proveïdors, productes, tipus de problema, causes, paraules clau, tipus d’acció, grups de notificació, marcs i requisits. |
 | `GET /api/ncs` | NC visibles, amb `can_edit` i `can_follow` per a l’usuari. |
 | `POST /api/ncs` | Alta. |
-| `POST /api/ncs/historic` · `purge` | Pas a històric per data i estats; esborrat de les històriques anteriors a una data. |
-| `GET/POST /api/settings` | Configuració del mòdul per client. |
+| `POST /api/ncs/historic` · `purge` | Pas massiu a històric per data i estats; esborrat de les històriques anteriors a una data. |
+| `POST /api/ncs/{id}/historic` | Pas individual a històric. |
+| `GET/POST /api/settings` | Configuració del mòdul per client, inclosa la numeració. |
+| `POST /api/catalogs/retire` | Data de baixa d’un valor de catàleg (buida per reactivar-lo). |
 | `POST /api/ncs/{id}/accept` · `dismiss` | Activar (responsable, caducitat, verificador, tancament, requisits) o desestimar. |
 | `POST /api/ncs/{id}/update` | Editar la fitxa, inclosos responsables i costos. |
 | `POST /api/ncs/{id}/analysis` | Causa, causa primària, requisits i accions noves. |
@@ -67,7 +86,7 @@ Permisos per objecte inspirats en `clsPermisos.vb`: edita qualitat, el responsab
 | `POST /api/ncs/{id}/followups` | Seguiment global amb documents. |
 | `POST /api/ncs/{id}/documents` | Afegir o esborrar documents annexos. |
 | `POST /api/ncs/{id}/links` | Relacionar, crear o eliminar registres relacionats. |
-| `POST /api/ncs/{id}/notify` | Notificació per grups de destinataris. |
+| `POST /api/ncs/{id}/notify` | Notificació per grups de destinataris i a adreces externes. |
 | `POST /api/ncs/{id}/verify` | Verificació d’eficàcia i tancament (motiu, paraula clau, data, costos) o reobertura. |
 | `POST /api/ncs/{id}/delete` | Esborrar una alta errònia. |
 
@@ -77,4 +96,4 @@ Permisos per objecte inspirats en `clsPermisos.vb`: edita qualitat, el responsab
 node check.js
 ```
 
-Recorre el cicle complet, les operacions de la fitxa, la reobertura per no eficàcia, l’històric, l’esborrat i les denegacions de permisos.
+Recorre el cicle complet, les operacions de la fitxa, la reobertura per no eficàcia, l’històric, l’esborrat, la numeració, les baixes de catàleg i les denegacions de permisos.

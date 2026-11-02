@@ -28,17 +28,23 @@ const DemoStore = (() => {
       { id: 'persones', name: 'Persones i formació', owner_id: 1 }, { id: 'infra', name: 'Manteniment i infraestructura', owner_id: 2 },
       { id: 'seginfo', name: 'Seguretat de la informació', owner_id: 1 }
     ],
-    origins: { auditoria_interna: 'Auditoria interna', auditoria_externa: 'Auditoria externa i inspeccions', reclamacio: 'Reclamació de client', proveidor: 'Proveïdor', incidencia: 'Incidència', intern: 'Detecció interna' },
+    origins: { auditoria_interna: 'Auditoria interna', auditoria_externa: 'Auditoria externa i inspeccions', reclamacio: 'Reclamació de client', proveidor: 'Proveïdor', incidencia: 'Incidència', intern: 'Detecció interna', altres: 'Altres' },
     // Origen amb suborígens (arbre d'origenes a Web35) i responsables per origen (origenes.ResponsableNC).
     suborigins: { auditoria_interna: { ai_9001: 'ISO 9001', ai_ens: 'ENS', ai_14001: 'ISO 14001' }, auditoria_externa: { ae_cert: 'Certificació', ae_insp: 'Inspecció de l’Administració', ae_client: 'Auditoria de client' },
       reclamacio: { rc_formal: 'Reclamació formal', rc_enquesta: 'Enquesta de satisfacció' }, proveidor: { pr_recepcio: 'Recepció', pr_servei: 'Servei subcontractat' },
       incidencia: { in_operativa: 'Incidència operativa', in_seguretat: 'Incident de seguretat' }, intern: { di_control: 'Control intern', di_personal: 'Comunicació del personal' } },
+    // Referència (ReferenciasAcciones) i subreferència (sc_ReferenciasAcciones): opcionals. Sense files filles, el camp no surt.
+    references: { ref_sg: 'Sistema de gestió', ref_clients: 'Clients', ref_compres: 'Compres', ref_legal: 'Compliment legal' },
+    subreferences: { ref_sg: { sg_docs: 'Documentació', sg_personal: 'Personal i formació' }, ref_clients: { cl_entregues: 'Entregues', cl_qualitat: 'Qualitat del servei' }, ref_compres: { cp_recepcio: 'Recepció de material', cp_avaluacio: 'Avaluació de proveïdors' } },
+    // Baixes amb data, «catàleg:clau». Web35 només té el camp borrado, sense data.
+    retired: { 'suborigins:ai_14001': day(-60) },
     originManagers: { auditoria_interna: [1], auditoria_externa: [1], reclamacio: [2], proveidor: [3], incidencia: [1], intern: [2] },
     // On es detecta: catàleg de selecció múltiple (DeteccionIncidencias a Web35).
     locations: { moll: 'Moll de recepció', magatzem: 'Magatzem', taller: 'Taller', control: 'Control final', obra: 'Obra / instal·lacions del client', oficines: 'Oficines', sistemes: 'Sistemes d’informació' },
     scopes: { taller: 'Taller', magatzem: 'Magatzem', oficines: 'Oficines', obra: 'Obra / instal·lacions del client', sistemes: 'Sistemes d’informació' },
     clients: { c1: 'Client Demo A, SA', c2: 'Client Demo B, SL', c3: 'Ajuntament de mostra' },
     suppliers: { p1: 'Proveïdor de mostra, SL', p2: 'Transports Demo, SA', p3: 'Subministres Exemple, SL' },
+    supplierEmails: { p1: 'qualitat@proveidor-mostra.example', p2: 'operacions@transports-demo.example' },
     products: { s1: 'Servei de manteniment', s2: 'Peça mecanitzada X-20', s3: 'Servei de transport' },
     phases: { recepcio: 'Recepció', produccio: 'Producció / prestació', control: 'Control final', lliurament: 'Lliurament', postvenda: 'Postvenda' },
     causes: { metode: 'Mètode', persones: 'Mà d’obra / persones', material: 'Material', equip: 'Màquina / equip', mesura: 'Mesura', entorn: 'Entorn' },
@@ -68,10 +74,10 @@ const DemoStore = (() => {
     states: { registrada: 'Pendent d’activar', analisi: 'Activa · en anàlisi', accions: 'Activa · accions en curs', verificacio: 'Pendent de verificació', tancada: 'Tancada', desestimada: 'Desestimada' }
   };
   // Configuració del mòdul per client (paràmetres reals de Web35).
-  let settings = { auto_activate: false, dept_target_required: false, suborigin_required: false, extended_validation: false, reminder_days: 3 };
+  let settings = { auto_activate: false, dept_target_required: false, suborigin_required: false, extended_validation: false, costs: true, reminder_days: 3, number_format: 'NC-{ANY}-{NUM}', number_digits: 3 };
   const settingNames = { auto_activate: 'Activar automàticament les NC en donar-les d’alta (ActivarAutomaticamenteNCCPAMINC)',
     dept_target_required: 'Departament destí obligatori (DepartamentoDestinoObligatorio)', suborigin_required: 'Suborigen obligatori (OrigenesSuborigenesObligatorios)',
-    extended_validation: 'Validació ampliada: causa obligatòria a l’alta (ValidacionExtendidaNCCPAM)' };
+    extended_validation: 'Validació ampliada: causa obligatòria a l’alta (ValidacionExtendidaNCCPAM)', costs: 'Costos de la no qualitat a la fitxa i al tancament' };
   let linkables = [
     { type: 'auditoria', ref: 'AUD-2026-01', title: 'Auditoria interna ISO 9001 · 2026' }, { type: 'auditoria', ref: 'AUD-2026-02', title: 'Auditoria externa de seguiment' },
     { type: 'incidencia', ref: 'INC-0142', title: 'Accés no autoritzat a carpeta compartida' }, { type: 'incidencia', ref: 'INC-0157', title: 'Entrega fora de termini' },
@@ -80,13 +86,15 @@ const DemoStore = (() => {
   ];
   const prefix = { acap: 'ACAP', millora: 'AM', incidencia: 'INC', auditoria: 'AUD' };
   // Camps de la fitxa editables mentre la NC és oberta.
-  const editable = ['title', 'description', 'origin', 'suborigin', 'origin_ref', 'process', 'scope', 'dept_origin', 'dept_target', 'client', 'supplier', 'product', 'phase',
+  const editable = ['title', 'description', 'origin', 'suborigin', 'reference', 'subreference', 'origin_ref', 'process', 'scope', 'dept_origin', 'dept_target', 'client', 'supplier', 'product', 'phase',
     'locations', 'detected_at', 'due_date', 'root_cause', 'cause_id', 'requirements', 'owner_id', 'verifier_id', 'closer_id', 'cost'];
   const numeric = ['owner_id', 'verifier_id', 'closer_id'];
+  // Camps que apunten a un catàleg amb baixes. Les NC que ja tenen el valor el conserven.
+  const fieldCatalog = { origin: 'origins', suborigin: 'suborigins', reference: 'references', subreference: 'subreferences', dept_target: 'departments', dept_origin: 'departments', phase: 'phases', cause_id: 'causes' };
 
   const ev = (kind, actor, detail, when) => ({ kind, actor, detail, created_at: when });
   const note = (recipient, message, subject) => ({ channel: 'correu', recipient, subject: subject || '', status: 'Previsualització · no enviat', message });
-  const base = () => ({ scope: '', dept_origin: '', dept_target: '', client: '', supplier: '', product: '', phase: '', locations: [], suborigin: '', due_date: '', origin_ref: '', deleted: false,
+  const base = () => ({ scope: '', dept_origin: '', dept_target: '', client: '', supplier: '', product: '', phase: '', locations: [], suborigin: '', reference: '', subreference: '', due_date: '', origin_ref: '', deleted: false,
     root_cause: '', cause_id: null, owner_id: null, verifier_id: 1, closer_id: 1, historic: false, cycle: 1, verify_days: 60, requirements: [], actions: [],
     cost: { hours_planned: '', hours_real: '', team: '', items: [{ supplier: '', amount: '' }, { supplier: '', amount: '' }, { supplier: '', amount: '' }], notes: '' },
     followups: [], documents: [], links: [], notifications: [], events: [] });
@@ -95,7 +103,7 @@ const DemoStore = (() => {
   let ncs = [
     { ...base(), id: 1, number: 'NC-2026-014', title: 'Lot de material rebut fora d’especificació', state: 'accions', author_id: 2, owner_id: 3,
       description: 'Inspecció de recepció: 3 de 20 unitats del lot presenten dimensions fora de toleràncies.', origin: 'proveidor', origin_ref: 'Albarà 4471', process: 'compres',
-      scope: 'magatzem', dept_origin: 'servei', dept_target: 'compres', supplier: 'p1', product: 's2', phase: 'recepcio', locations: ['moll', 'magatzem'], suborigin: 'pr_recepcio',
+      scope: 'magatzem', dept_origin: 'servei', dept_target: 'compres', supplier: 'p1', product: 's2', phase: 'recepcio', locations: ['moll', 'magatzem'], suborigin: 'pr_recepcio', reference: 'ref_compres', subreference: 'cp_recepcio',
       detected_at: day(-21), due_date: day(20), root_cause: 'El proveïdor va canviar d’utillatge sense comunicar-ho i la recepció no preveu mostreig dimensional.',
       cause_id: 'material', requirements: ['iso9001-8.4', 'iso9001-8.5.1'], verifier_id: 1, closer_id: 3,
       cost: { hours_planned: '6', hours_real: '4', team: 'Recepció', items: [{ supplier: 'Transports Demo, SA', amount: '180' }, { supplier: '', amount: '' }, { supplier: '', amount: '' }], notes: 'Hores d’inspecció i transport de retorn.' },
@@ -114,13 +122,13 @@ const DemoStore = (() => {
     },
     { ...base(), id: 2, number: 'NC-2026-015', title: 'Registres de formació incomplets', state: 'registrada', author_id: 1,
       description: 'Auditoria interna: 2 de 6 tècnics mostrejats no tenen evidència de la formació inicial en el lloc de treball.',
-      origin: 'auditoria_interna', suborigin: 'ai_9001', origin_ref: 'Troballa 3', process: 'persones', dept_origin: 'qualitat', dept_target: 'servei', detected_at: day(-2), requirements: ['iso9001-7.2'],
+      origin: 'auditoria_interna', suborigin: 'ai_9001', reference: 'ref_sg', subreference: 'sg_personal', origin_ref: 'Troballa 3', process: 'persones', dept_origin: 'qualitat', dept_target: 'servei', detected_at: day(-2), requirements: ['iso9001-7.2'],
       links: [{ type: 'auditoria', ref: 'AUD-2026-01', title: 'Auditoria interna ISO 9001 · 2026' }],
       events: [ev('Alta', 'Elena Mas', 'Troballa d’auditoria registrada com a NC.', at(-2))]
     },
     { ...base(), id: 3, number: 'NC-2026-016', title: 'Retard reiterat en les entregues a un client', state: 'analisi', author_id: 1, owner_id: 2,
       description: 'El client ha presentat una reclamació formal per tres entregues fora de termini aquest trimestre.',
-      origin: 'reclamacio', suborigin: 'rc_formal', origin_ref: 'Reclamació R-2026-031', locations: ['obra'], process: 'servei', dept_origin: 'qualitat', dept_target: 'servei', client: 'c2', product: 's3', phase: 'lliurament',
+      origin: 'reclamacio', suborigin: 'rc_formal', reference: 'ref_clients', subreference: 'cl_entregues', origin_ref: 'Reclamació R-2026-031', locations: ['obra'], process: 'servei', dept_origin: 'qualitat', dept_target: 'servei', client: 'c2', product: 's3', phase: 'lliurament',
       detected_at: day(-6), due_date: day(30), due_analysis: day(4), requirements: ['iso9001-8.2', 'iso9001-9.1.2'], closer_id: 2,
       actions: [action(1, 1, 'correccio', 'Replanificar les entregues pendents i confirmar-les amb el client.', 2, day(-5), -5)],
       followups: [{ author: 'Jordi Soler', at: at(-3), text: 'Recollides les dades de les 3 entregues: totes depenien de la mateixa ruta i transportista.', files: [{ name: 'entregues-T3.xlsx' }] }],
@@ -132,7 +140,7 @@ const DemoStore = (() => {
     },
     { ...base(), id: 4, number: 'NC-2026-011', title: 'Accés no autoritzat a una carpeta compartida', state: 'verificacio', author_id: 1, owner_id: 1,
       description: 'Un usuari d’un altre departament tenia permís d’edició sobre la carpeta de contractes després d’un canvi de lloc.',
-      origin: 'incidencia', suborigin: 'in_seguretat', origin_ref: 'INC-0142', process: 'seginfo', locations: ['sistemes'], scope: 'sistemes', dept_origin: 'administracio', dept_target: 'qualitat',
+      origin: 'incidencia', suborigin: 'in_seguretat', reference: 'ref_legal', origin_ref: 'INC-0142', process: 'seginfo', locations: ['sistemes'], scope: 'sistemes', dept_origin: 'administracio', dept_target: 'qualitat',
       detected_at: day(-40), due_date: day(-1), root_cause: 'El procediment de canvi de lloc no inclou la revisió de permisos de carpetes compartides.',
       cause_id: 'metode', requirements: ['iso9001-7.5.3', 'ens-op.acc.4', 'ens-op.exp.7', 'legal-rgpd-32'], verify_days: 30, verify_due: day(2),
       actions: [
@@ -170,7 +178,13 @@ const DemoStore = (() => {
       events: [ev('Alta', 'Laia Ferrer', 'Revisió de proveïdors.', at(-300)), ev('Verificació i tancament', 'Elena Mas', 'Eficaç.', at(-190))]
     }
   ];
-  let nextId = 8, nextNumber = 17;
+  let nextId = 8;
+  // Web35 només té un comptador (Contadores.Num_NC). Aquí hi ha un comptador per any si el format porta {ANY}, i per això torna a 1 cada gener.
+  const counters = { 2026: 16, tot: 16 };
+  const counterKey = () => settings.number_format.includes('{ANY}') ? day(0).slice(0, 4) : 'tot';
+  const nextSeq = () => (counters[counterKey()] || 0) + 1;
+  const numberFor = seq => settings.number_format.replaceAll('{ANY}', day(0).slice(0, 4)).replaceAll('{NUM}', String(seq).padStart(settings.number_digits, '0'));
+  const settingsView = () => clone({ settings, names: settingNames, next_number: nextSeq(), next_preview: numberFor(nextSeq()) });
 
   const fail = msg => { throw Error(msg); };
   const find = id => ncs.find(n => n.id === id) || fail('No s’ha trobat la NC.');
@@ -178,6 +192,10 @@ const DemoStore = (() => {
   const body = options => options.body ? JSON.parse(options.body) : {};
   const files = list => (list || []).map(f => ({ name: f.name, url: f.data ? `data:${f.content_type};base64,${f.data}` : null }));
   const isQuality = uid => uid === 1;
+  const retired = (kind, key) => catalogs.retired[`${kind}:${key}`] <= day(0);
+  const activeChildren = (kind, parent) => Object.keys(catalogs[kind][parent] || {}).filter(k => !retired(kind, k));
+  const checkActive = (d, keys) => { for (const k of keys) if (fieldCatalog[k] && d[k] && retired(fieldCatalog[k], d[k])) fail('Hi ha un valor donat de baixa al catàleg.'); };
+  const defaultOwner = n => catalogs.processes.find(p => p.id === n.process)?.owner_id || catalogs.originManagers[n.origin]?.[0] || 1;
   const isOpen = n => !['tancada', 'desestimada'].includes(n.state);
   const managers = n => [catalogs.deptManagers[n.dept_origin], catalogs.deptManagers[n.dept_target]];
   const actionOwners = n => n.actions.flatMap(a => [a.owner_id, a.owner2_id]);
@@ -203,13 +221,15 @@ const DemoStore = (() => {
 
   function create(d, uid) {
     if ([5, 6].includes(uid)) fail('Aquest perfil només pot consultar.');
-    if (!d.title || !d.origin || !d.process) fail('Falten el títol, l’origen o el procés.');
+    if (!d.title || !d.origin) fail('Falten el resum del problema o l’origen.');
+    checkActive(d, Object.keys(fieldCatalog));
     if (settings.dept_target_required && !d.dept_target) fail('Has de seleccionar el departament de destí.');
-    if (settings.suborigin_required && catalogs.suborigins[d.origin] && !d.suborigin) fail('Has de seleccionar un suborigen.');
+    if (settings.suborigin_required && activeChildren('suborigins', d.origin).length && !d.suborigin) fail('Has de seleccionar un suborigen.');
     if (settings.extended_validation && !d.root_cause) fail('Has d’informar de la causa.');
-    const n = { ...base(), id: nextId++, number: `NC-2026-${String(nextNumber++).padStart(3, '0')}`, title: d.title, description: d.description || '', state: 'registrada',
-      origin: d.origin, origin_ref: d.origin_ref || '', process: d.process, author_id: uid, detected_at: d.detected_at || day(0),
+    const n = { ...base(), id: nextId++, seq: counters[counterKey()] = nextSeq(), counter: counterKey(), title: d.title, description: d.description || '', state: 'registrada',
+      origin: d.origin, origin_ref: d.origin_ref || '', reference: d.reference || '', subreference: d.subreference || '', process: d.process || '', author_id: uid, detected_at: d.detected_at || day(0),
       dept_origin: users.find(u => u.id === uid).dept || '', dept_target: d.dept_target || '', suborigin: d.suborigin || '', locations: d.locations || [], root_cause: d.root_cause || '' };
+    n.number = numberFor(n.seq);
     if (d.correction) { const a = newAction(n, { type: 'correccio', text: d.correction, owner_id: uid, due: day(0) }); a.status = 'feta'; a.done_at = now(); n.actions.push(a); }
     for (const f of files(d.files)) n.documents.push({ ...f, by: userName(uid), at: now() });
     log(n, 'Alta', uid, 'NC registrada. Pendent d’activar per qualitat; la fitxa es pot completar després.');
@@ -223,7 +243,7 @@ const DemoStore = (() => {
     accept(n, d, uid, auto) { // Activar (ActivarNoConformitats)
       if (!(isQuality(uid) || auto) || n.state !== 'registrada') fail('Només qualitat pot activar una NC pendent d’activar.');
       if (!d.due_date) fail('La data de caducitat és obligatòria en activar la NC.');
-      const owner = Number(d.owner_id) || catalogs.processes.find(p => p.id === n.process).owner_id;
+      const owner = Number(d.owner_id) || defaultOwner(n);
       Object.assign(n, { state: 'analisi', owner_id: owner, due_date: d.due_date, due_analysis: d.due_analysis || day(7), requirements: d.requirements || n.requirements,
         verifier_id: Number(d.verifier_id) || n.verifier_id, closer_id: Number(d.closer_id) || owner });
       log(n, 'Activació', uid, `${auto ? 'Activada automàticament' : 'Activada'} i assignada a ${userName(owner)}. Caducitat ${n.due_date}.`);
@@ -267,10 +287,11 @@ const DemoStore = (() => {
     },
     update(n, d, uid) {
       if (!canEdit(uid, n)) fail('No tens permís per editar aquesta fitxa.');
-      if (d.title === '') fail('El títol no pot quedar buit.');
+      if (d.title === '') fail('El resum del problema no pot quedar buit.');
       if (n.state !== 'registrada' && 'due_date' in d && !d.due_date) fail('Una NC activa ha de tenir data de caducitat.');
       if (settings.dept_target_required && 'dept_target' in d && !d.dept_target) fail('Has de seleccionar el departament de destí.');
       const changed = editable.filter(k => k in d && JSON.stringify(d[k]) !== JSON.stringify(n[k]));
+      checkActive(d, changed);
       for (const k of changed) n[k] = numeric.includes(k) ? Number(d[k]) || null : d[k];
       log(n, 'Fitxa actualitzada', uid, changed.length ? `${changed.length} ${changed.length === 1 ? 'camp modificat' : 'camps modificats'}.` : 'Sense canvis.');
     },
@@ -310,15 +331,25 @@ const DemoStore = (() => {
     },
     notify(n, d, uid) {
       if (!canFollow(uid, n) && !isQuality(uid)) fail('No tens permís per enviar notificacions d’aquesta NC.');
-      const to = recipients(n, d.groups || []);
-      if (!to.length || !d.message) fail('Cal triar destinataris i escriure el missatge.');
+      const to = recipients(n, d.groups || []), external = d.external || [];
+      if ((!to.length && !external.length) || !d.message) fail('Cal triar destinataris i escriure el missatge.');
+      if (external.some(e => !/^\S+@\S+\.\S+$/.test(e))) fail('Hi ha una adreça externa incorrecta.');
       for (const id of to) n.notifications.push(note(userName(id), d.message, d.subject || `Notificació de la no conformitat ${n.number}`));
-      log(n, 'Notificació enviada', uid, `A ${to.map(userName).join(', ')}.`);
+      for (const e of external) n.notifications.push({ ...note(e, d.message, d.subject || `Notificació de la no conformitat ${n.number}`), status: 'Previsualització · no enviat · extern sense accés al Qualiteasy' });
+      log(n, 'Notificació enviada', uid, `A ${[...to.map(userName), ...external].join(', ')}.`);
     },
     delete(n, d, uid) {
       if (!(isQuality(uid) || (n.state === 'registrada' && uid === n.author_id))) fail('Només qualitat, o l’autor abans de l’activació, poden esborrar la NC.');
       if (n.actions.some(a => a.type !== 'correccio') || n.followups.length) fail('No es pot esborrar una NC amb accions o seguiments: desestima-la.');
-      n.deleted = true; log(n, 'Esborrada', uid, 'Marcada com a esborrada (es conserva a la base de dades).');
+      // ponytail: només s'allibera l'últim número; un número del mig queda com a forat perquè no es reassigni mai un número ja comunicat.
+      const released = n.seq === counters[n.counter];
+      if (released) counters[n.counter]--;
+      n.deleted = true; log(n, 'Esborrada', uid, `Marcada com a esborrada (es conserva a la base de dades). ${released ? 'Número alliberat.' : 'El número queda sense reutilitzar.'}`);
+    },
+    historic(n, d, uid) { // Pas individual; el massiu és historic() per data i estats.
+      if (!isQuality(uid)) fail('Només qualitat pot passar NC a l’històric.');
+      if (isOpen(n) || n.historic) fail('Només es poden passar a l’històric NC tancades o desestimades.');
+      n.historic = true; log(n, 'Passada a històric', uid, 'Pas individual.');
     }
   };
 
@@ -361,6 +392,24 @@ const DemoStore = (() => {
     for (const n of gone) { n.deleted = true; log(n, 'Esborrada de l’històric', uid, `Anterior a ${d.before}.`); }
     return { deleted: gone.length };
   }
+  function retire(d, uid) {
+    if (!isQuality(uid)) fail('Només qualitat pot donar de baixa valors dels catàlegs.');
+    if (!Object.values(fieldCatalog).concat('locations', 'keywords').includes(d.kind)) fail('Catàleg desconegut.');
+    const keys = Object.entries(catalogs[d.kind]).flatMap(([k, v]) => typeof v === 'string' ? [k] : Object.keys(v));
+    if (!keys.includes(d.key)) fail('Valor de catàleg desconegut.');
+    if (d.date) catalogs.retired[`${d.kind}:${d.key}`] = d.date; else delete catalogs.retired[`${d.kind}:${d.key}`];
+    return clone({ retired: catalogs.retired });
+  }
+  function saveNumbering(d) {
+    const digits = Number(d.number_digits), next = Number(d.next_number), previous = nextSeq(), { number_format, number_digits } = settings;
+    if (!d.number_format?.includes('{NUM}')) fail('El format ha de portar {NUM}.');
+    if (!(digits >= 1 && digits <= 8)) fail('Els dígits han d’estar entre 1 i 8.');
+    Object.assign(settings, { number_format: d.number_format, number_digits: digits });
+    if (next && next !== previous) {
+      if (next < nextSeq()) { Object.assign(settings, { number_format, number_digits }); fail('El comptador no pot baixar: es repetirien números.'); }
+      counters[counterKey()] = next - 1;
+    }
+  }
   // Recordatoris de termini als responsables d'accions (FechaAlertaResponsable a Web35).
   function reminders() {
     const limit = day(settings.reminder_days);
@@ -376,8 +425,9 @@ const DemoStore = (() => {
     const d = body(options);
     const uid = roleUser[url.searchParams.get('role') || d.actor_role] || fail('Perfil desconegut.');
     if (url.pathname === '/api/catalogs') return clone({ users, ...catalogs, linkables });
-    if (url.pathname === '/api/settings' && !options.method) return clone({ settings, names: settingNames });
-    if (url.pathname === '/api/settings' && options.method === 'POST') { if (!isQuality(uid)) fail('Només qualitat pot canviar la configuració.'); for (const k of Object.keys(settingNames)) if (k in d) settings[k] = !!d[k]; return clone({ settings, names: settingNames }); }
+    if (url.pathname === '/api/catalogs/retire' && options.method === 'POST') return retire(d, uid);
+    if (url.pathname === '/api/settings' && !options.method) return settingsView();
+    if (url.pathname === '/api/settings' && options.method === 'POST') { if (!isQuality(uid)) fail('Només qualitat pot canviar la configuració.'); for (const k of Object.keys(settingNames)) if (k in d) settings[k] = !!d[k]; if ('number_format' in d) saveNumbering(d); return settingsView(); }
     if (url.pathname === '/api/ncs/purge' && options.method === 'POST') return purge(d, uid);
     if (url.pathname === '/api/ncs' && !options.method) reminders();
     if (url.pathname === '/api/ncs' && !options.method)
