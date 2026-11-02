@@ -50,21 +50,6 @@ Numeració: `{ANY}` i `{NUM}` al format. Amb `{ANY}`, el comptador torna a 1 cad
 | Opcions de llistat (`GestorPuedeVisualizarDepartamentoDestino`, `MostrarReferenciaEnGridGestion`, `OcultarDepartamentoEnGridAcciones`) i tria manual o automàtica de destinataris (`SeleccionarDestinatariosCorreosNCCPAMINC`) | Per instal·lació | Paràmetres de configuració. |
 | Editor de text enriquit per a problema, causa i seguiments; informes Crystal | — | Text amb format i impressió web. |
 
-### A tenir en compte al producte real
-
-Punts de la revisió amb la Marta. Alguns la demo només els ensenya, i d’altres encara no hi són.
-
-| Tema | Què cal resoldre | A la demo |
-|---|---|---|
-| Etiquetes per client | Cada client ha de poder editar les etiquetes dels camps (p. ex. «Resum del problema»). | Etiquetes fixes. |
-| Permisos | Permisos a part dels perfils base, per usuari i per acció (`PuedeActivarNC` n’és un cas). | Només perfils base. |
-| Enviament a externs | Proveïdors i externs sense usuari han de rebre comunicats, incidències i altres registres: enviament real, contingut (PDF o enllaç), traça i dades personals. Aplica a tots els mòduls. | Només a NC, i en previsualització. |
-| Numeració | Assignar el número de forma atòmica i amb unicitat per client. Migrar `Contadores.Num_NC`. Confirmar si l’any és el de l’alta (a la demo) o el de la detecció. | Comptador en memòria. |
-| NC errònies | Confirmar quan es pot esborrar i quan cal desestimar, i la regla d’alliberar el número. | Esborrat lògic, sense accions ni seguiments. |
-| Baixes de catàleg | Web35 només té `borrado`, sense data, i als orígens `ActivoNC/AP/AM/INC` per mòdul: decidir si la baixa és global o per mòdul. Estendre-la a clients, proveïdors, productes i processos. | Baixa global amb data en els catàlegs de Configuració. |
-| Referències | L’arbre de `sc_ReferenciasAcciones` té diversos nivells (`IdReferenciaPare`). Web35 també té el text lliure `referencia`, que aquí és «Detall de l’origen»: confirmar si es manté. | Un sol nivell de subreferència. |
-| Altes de catàleg | Mantenir els valors de les taules laterals. | Només es poden donar de baixa. |
-
 ## Contracte d’API
 
 `app.js` fa totes les crides amb `api(path, options)`; avui responen des de `store.js`. Canviant aquesta funció per `fetch` es connecta a un backend real. A l’API real el perfil **no** arriba per paràmetre (`?role=`, `actor_role`): surt del token Keycloak.
