@@ -1,18 +1,17 @@
 const $ = id => document.getElementById(id);
 
-const allowedRoles = ['municipal', 'brigada', 'brigada_suport', 'cap_brigada', 'responsable_servei', 'validador'];
+const allowedRoles = ['municipal', 'brigada', 'brigada_suport', 'cap_brigada', 'responsable_servei'];
 const params = new URLSearchParams(location.search);
 let role = allowedRoles.includes(params.get('role')) ? params.get('role') : 'municipal';
 const requestedIncident = Number(params.get('incident') || 0);
-const roleNames = { municipal: 'Ajuntament · recepció', brigada: 'Operari · brigada', brigada_suport: 'Operari · suport', cap_brigada: 'Cap de Brigada', responsable_servei: 'Responsable del servei', validador: 'Ajuntament · validació' };
+const roleNames = { municipal: 'Ajuntament', brigada: 'Operari Prova · brigada', brigada_suport: 'Operari Suport Prova · brigada', cap_brigada: 'Cap de Brigada', responsable_servei: 'Responsable del servei' };
 const roleOwnerIds = { brigada: 4, brigada_suport: 6 };
 const roleIntro = {
-  municipal: 'Revisa l’avís, completa les dades i assigna la feina. També pots seguir tot el cicle.',
-  brigada: 'Consulta les feines assignades, adjunta el resultat i efectua el pretancament.',
-  brigada_suport: 'Consulta només les feines assignades a l’operari de suport i efectua el pretancament.',
+  municipal: 'Registra l’avís, el revisa i assigna la feina; quan la brigada pretanca, valida el resultat i tanca o retorna.',
+  brigada: 'Veu només les feines assignades a Operari Prova: hi deixa seguiments i en fa el pretancament amb fotografies.',
+  brigada_suport: 'Veu només les feines assignades a Operari Suport Prova: hi deixa seguiments i en fa el pretancament amb fotografies.',
   cap_brigada: 'Segueix les feines de brigada i els avisos d’activació. Vista de consulta de la demo.',
-  responsable_servei: 'Segueix les incidències activades al servei i els avisos rebuts. Vista de consulta de la demo.',
-  validador: 'Revisa les fotografies de la brigada i valida o retorna el tancament.'
+  responsable_servei: 'Segueix les incidències activades al servei i els avisos rebuts. Vista de consulta de la demo.'
 };
 const originNames = { telefon: 'Trucada rebuda', correu: 'Correu rebut', whatsapp: 'WhatsApp',
   web_municipal: 'Web municipal', ajuntament: 'Detecció interna', brigada: 'Operari de brigada',
@@ -162,7 +161,7 @@ function renderDetail(i) {
   const work = elem('div', 'work-summary');
   work.append(info('Acció immediata / feina encomanada', m.action_instruction),
     info('Responsable d’execució / càrrec', [m.assignee_name, m.assignee_position].filter(Boolean).join(' · ')),
-    info('Data límit', m.due_date), info('Prioritat', m.priority === 'urgent' ? 'Urgent' : m.priority === 'normal' ? 'Normal' : 'Pendent'));
+    info('Data límit', m.due_date), info('Prioritat', m.priority === 'urgent' ? 'Urgent' : m.priority === 'normal' ? 'Normal' : 'Per definir'));
   body.append(section('Assignació i ordre de treball', work));
   if (m.preclosed_at || m.closed_at) {
     const closure = elem('div', 'detail-grid');
@@ -192,25 +191,26 @@ function renderDetail(i) {
   if (i.nc) {
     const box = elem('div', 'nc-linked');
     box.append(elem('strong', '', `${i.nc.reference} · ${i.nc.status}`), paragraph(`Motiu: ${i.nc.reason}`),
-      paragraph('Registre de NC local de demostració, vinculat a la incidència; no és una NC del Qualiteasy de producció.', 'hint'));
+      paragraph('Registre de NC local de demostració, vinculat a la incidència. El seguiment i el tancament de la NC es fan al mòdul de no conformitats.', 'hint'));
+    const link = elem('a', '', 'Veure la demo de no conformitats ↗'); link.href = '../no-conformitats/'; link.target = '_blank'; box.append(link);
     body.append(section('No conformitat vinculada', box));
   }
   const actions = elem('div', 'actions');
   if (role === 'municipal' && i.state_id === 9)
-    actions.append(button('Validar i assignar a brigada', 'primary', () => openAssign(i)));
+    actions.append(button('Revisar i assignar a brigada', 'primary', () => openAssign(i)));
   if (roleOwnerIds[role] && i.state_id === 7 && i.owner_id === roleOwnerIds[role])
     actions.append(button('Pretancar amb fotografies', 'primary', () => openPreclose(i)));
-  if ((role === 'municipal' || role === 'validador') && i.state_id === 8)
+  if (role === 'municipal' && i.state_id === 8)
     actions.append(button('Validar o retornar', 'primary', () => openValidate(i)));
   const assignedHere = roleOwnerIds[role] && i.owner_id === roleOwnerIds[role];
-  if (i.state_id !== 4 && (['municipal', 'validador', 'cap_brigada', 'responsable_servei'].includes(role) || assignedHere))
+  if (i.state_id !== 4 && (['municipal', 'cap_brigada', 'responsable_servei'].includes(role) || assignedHere))
     actions.append(button('Afegir seguiment', 'secondary', () => openFollowup(i)));
-  if ((role === 'municipal' || role === 'validador') && i.state_id !== 4)
+  if (role === 'municipal' && i.state_id !== 4)
     actions.append(button('Editar dades', 'secondary', () => openEdit(i)));
   if (i.state_id !== 9) {
     actions.append(button('Veure / imprimir ordre de treball', 'secondary', () => printOrder(i)));
   }
-  if ((role === 'municipal' || role === 'validador') && !i.nc)
+  if (role === 'municipal' && !i.nc)
     actions.append(button('Derivar a NC', 'secondary', () => openNc(i)));
 
   body.append(actions);
@@ -220,7 +220,7 @@ function renderDetail(i) {
   } else timeline.append(paragraph('La mostra històrica no inclou esdeveniments operatius reals. Fes una acció de prova per veure’n la traça.', 'hint'));
   body.append(section('Historial del flux', timeline));
   const recipientFragment = { brigada: 'Operari Prova', brigada_suport: 'Operari Suport Prova',
-    cap_brigada: 'Cap de Brigada', responsable_servei: 'Responsable del servei', validador: 'Validador Prova' }[role];
+    cap_brigada: 'Cap de Brigada', responsable_servei: 'Responsable del servei' }[role];
   const shownNotifications = (i.notifications || []).filter(n => !recipientFragment || n.recipient.includes(recipientFragment));
   if (shownNotifications.length) {
     const previews = elem('div', 'notification-list');
@@ -237,6 +237,9 @@ function openPhoto(file) {
   $('photo-caption').textContent = `${file.phase} · ${file.name}${file.name.includes('sintetica') ? ' · Imatge sintètica de demostració' : ''}`;
   $('photo-dialog').showModal();
 }
+const departments = ['Atenció ciutadana', 'Brigada municipal', 'Serveis municipals', 'Urbanisme', 'Medi ambient', 'Policia local', 'Altres'];
+for (const s of document.querySelectorAll('[data-departments]')) s.append(...departments.map(d => new Option(d)));
+$('reset-demo').addEventListener('click', () => { DemoStore.reset(); location.reload(); });
 function openAssign(i) {
   selectedId = i.id; const m = i.metadata || {};
   $('assign-executor').value = String(m.assignee_id || 4);

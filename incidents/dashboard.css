@@ -7,3 +7,4 @@
 
 /* Logotip corporatiu original, sense símbol ni lema recreats. */
 .brand{min-width:270px}.brand-logo-wrap{display:flex;align-items:center;width:234px;height:52px;padding:7px 10px;background:#fff;border-radius:8px}.brand-logo{display:block;width:100%;height:100%;object-fit:contain}@media(max-width:520px){.brand{min-width:0}.brand-logo-wrap{width:190px;height:44px;padding:6px 8px}}
+.who-does-what{margin-top:8px;font-size:12px;color:#3d4b39;max-width:640px}.who-does-what summary{cursor:pointer;font-weight:700;color:#376431}.who-does-what ol{margin:6px 0;padding-left:18px}.who-does-what li{margin:4px 0}

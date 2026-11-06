@@ -30,7 +30,7 @@ const DemoStore = (() => {
       photos: [picture('fito-pujades-sintetica.png')], synthetic_photo: true,
       attachments: [picture('fito-pujades-sintetica.png')],
       metadata: { origin_department: 'Atenció ciutadana', reporter_name: 'Usuària Municipal Prova', reporter_position: 'Administrativa', target_department: 'Serveis municipals', category: 'via_publica', priority: 'normal', action_instruction: 'Comprovar l’accés i reposar el fitó. Documentar el resultat amb fotografies.', assignee_id: 4, assignee_name: 'Operari Prova', assignee_position: 'Operari de brigada', brigade_lead: 'Cap de Brigada (prova)', service_lead: 'Responsable del servei (prova)', due_date: '2026-10-14' },
-      events: [{ kind: 'Avís registrat', actor: 'Ajuntament · recepció', created_at: '2026-10-06T10:20:00', detail: 'Trucada rebuda i incidència registrada.' }, { kind: 'Assignació a SSMM', actor: 'Ajuntament · recepció', created_at: '2026-10-06T11:00:00', detail: 'Feina assignada a Operari Prova.' }],
+      events: [{ kind: 'Avís registrat', actor: 'Ajuntament', created_at: '2026-10-06T10:20:00', detail: 'Trucada rebuda i incidència registrada.' }, { kind: 'Assignació a SSMM', actor: 'Ajuntament', created_at: '2026-10-06T11:00:00', detail: 'Feina assignada a Operari Prova.' }],
       notifications: [{ channel: 'correu', recipient: 'Cap de Brigada (prova)', status: 'Previsualització · no enviat', message: 'S’ha activat la incidència DEMO-002.' }, { channel: 'WhatsApp', recipient: 'Responsable del servei (prova)', status: 'Previsualització · no enviat', message: 'S’ha activat la incidència DEMO-002.' }, { channel: 'WhatsApp', recipient: 'Operari Prova', status: 'Previsualització · no enviat', message: 'Tens assignada la incidència DEMO-002.' }], nc: null
     },
     {
@@ -41,8 +41,8 @@ const DemoStore = (() => {
       photos: [picture('frontissa-parc-sintetica.png'), picture('frontissa-parc-sintetica.png', 'Pretancament')], synthetic_photo: true,
       attachments: [picture('frontissa-parc-sintetica.png'), picture('frontissa-parc-sintetica.png', 'Pretancament')],
       metadata: { origin_department: 'Serveis municipals', reporter_name: 'Usuària Municipal Prova', reporter_position: 'Administrativa', target_department: 'Serveis municipals', category: 'via_publica', priority: 'normal', action_instruction: 'Revisar la porta del parc i substituir la frontissa.', assignee_id: 4, assignee_name: 'Operari Prova', assignee_position: 'Operari de brigada', due_date: '2026-10-10', work_done: 'Frontissa substituïda i porta revisada.', preclosed_at: '2026-10-07T15:00:00', preclosed_by: 'Operari Prova', preclosed_position: 'Operari de brigada' },
-      events: [{ kind: 'Assignació a SSMM', actor: 'Ajuntament · recepció', created_at: '2026-10-04T09:00:00', detail: 'Feina assignada a brigada.' }, { kind: 'Pretancament', actor: 'Operari Prova', created_at: '2026-10-07T15:00:00', detail: 'Frontissa substituïda. Fotografia adjunta.' }],
-      notifications: [{ channel: 'correu', recipient: 'Validador Prova', status: 'Previsualització · no enviat', message: 'La incidència DEMO-003 espera validació.' }], nc: null
+      events: [{ kind: 'Assignació a SSMM', actor: 'Ajuntament', created_at: '2026-10-04T09:00:00', detail: 'Feina assignada a brigada.' }, { kind: 'Pretancament', actor: 'Operari Prova', created_at: '2026-10-07T15:00:00', detail: 'Frontissa substituïda. Fotografia adjunta.' }],
+      notifications: [{ channel: 'correu', recipient: 'Ajuntament', status: 'Previsualització · no enviat', message: 'La incidència DEMO-003 espera validació.' }], nc: null
     },
     {
       id: 4, number: 'DEMO-004', title: '[MOSTRA ALELLA] Fitó reposat a la vorera',
@@ -51,18 +51,23 @@ const DemoStore = (() => {
       created_at: '2026-09-28T09:30:00', photo: assets + 'fito-pujades-sintetica.png',
       photos: [picture('fito-pujades-sintetica.png')], synthetic_photo: true,
       attachments: [picture('fito-pujades-sintetica.png')],
-      metadata: { origin_department: 'Atenció ciutadana', reporter_name: 'Usuària Municipal Prova', reporter_position: 'Administrativa', target_department: 'Serveis municipals', category: 'via_publica', priority: 'normal', action_instruction: 'Inspeccionar i reparar la zona.', assignee_id: 6, assignee_name: 'Operari Suport Prova', assignee_position: 'Operari de brigada', due_date: '2026-10-03', work_done: 'Zona reparada i senyalització retirada.', preclosed_at: '2026-10-02T16:00:00', preclosed_by: 'Operari Suport Prova', preclosed_position: 'Operari de brigada', closed_at: '2026-10-03T10:00:00', closed_by: 'Validador Prova', closed_position: 'Responsable municipal', closure_reason: 'Treball comprovat i acceptat.' },
-      events: [{ kind: 'Avís rebut', actor: 'Ajuntament · recepció', created_at: '2026-09-28T09:30:00', detail: 'Avís rebut pel canal ciutadà de WhatsApp.' }, { kind: 'Pretancament', actor: 'Operari Suport Prova', created_at: '2026-10-02T16:00:00', detail: 'Feina finalitzada.' }, { kind: 'Tancament validat', actor: 'Validador Prova', created_at: '2026-10-03T10:00:00', detail: 'Treball comprovat i acceptat.' }],
+      metadata: { origin_department: 'Atenció ciutadana', reporter_name: 'Usuària Municipal Prova', reporter_position: 'Administrativa', target_department: 'Serveis municipals', category: 'via_publica', priority: 'normal', action_instruction: 'Inspeccionar i reparar la zona.', assignee_id: 6, assignee_name: 'Operari Suport Prova', assignee_position: 'Operari de brigada', due_date: '2026-10-03', work_done: 'Zona reparada i senyalització retirada.', preclosed_at: '2026-10-02T16:00:00', preclosed_by: 'Operari Suport Prova', preclosed_position: 'Operari de brigada', closed_at: '2026-10-03T10:00:00', closed_by: 'Ajuntament', closed_position: 'Responsable municipal', closure_reason: 'Treball comprovat i acceptat.' },
+      events: [{ kind: 'Avís rebut', actor: 'Ajuntament', created_at: '2026-09-28T09:30:00', detail: 'Avís rebut pel canal ciutadà de WhatsApp.' }, { kind: 'Pretancament', actor: 'Operari Suport Prova', created_at: '2026-10-02T16:00:00', detail: 'Feina finalitzada.' }, { kind: 'Tancament validat', actor: 'Ajuntament', created_at: '2026-10-03T10:00:00', detail: 'Treball comprovat i acceptat.' }],
       notifications: [], nc: null
     }
   ];
-  let cases = initial;
-  let nextId = 5;
-  let nextNc = 1;
+  // ponytail: sessionStorage (~5 MB); si les fotos el desborden, la sessió continua només en memòria.
+  const KEY = 'qualiteasy-incidents-demo';
+  let saved = null;
+  try { saved = JSON.parse(sessionStorage.getItem(KEY)); } catch {}
+  let cases = saved?.cases || initial;
+  let nextId = saved?.nextId || 5;
+  let nextNc = saved?.nextNc || 1;
+  const save = () => { try { sessionStorage.setItem(KEY, JSON.stringify({ cases, nextId, nextNc })); } catch {} };
   const read = options => options.body ? JSON.parse(options.body) : {};
   const urlFor = file => `data:${file.content_type || 'application/octet-stream'};base64,${file.data}`;
   const makeFiles = (files, phase) => (files || []).map(file => ({ name: file.name, phase, image: (file.content_type || '').startsWith('image/'), url: urlFor(file) }));
-  const actor = role => ({ brigada: 'Operari Prova', brigada_suport: 'Operari Suport Prova', municipal: 'Ajuntament · recepció', validador: 'Validador Prova', cap_brigada: 'Cap de Brigada (prova)', responsable_servei: 'Responsable del servei (prova)' }[role] || 'Ajuntament');
+  const actor = role => ({ brigada: 'Operari Prova', brigada_suport: 'Operari Suport Prova', municipal: 'Ajuntament', cap_brigada: 'Cap de Brigada (prova)', responsable_servei: 'Responsable del servei (prova)' }[role] || 'Ajuntament');
   const addEvent = (item, kind, who, detail) => item.events.push({ kind, actor: who, detail, created_at: now() });
   function create(data, brigade) {
     const files = brigade ? makeFiles(data.photo ? [data.photo] : [], 'Avís') : makeFiles(data.files, 'Avís');
@@ -75,17 +80,17 @@ const DemoStore = (() => {
       photos: files.filter(f => f.image), attachments: files, synthetic_photo: false,
       metadata: { origin_department: brigade ? 'Brigada municipal' : data.origin_department, reporter_name: brigade ? 'Operari Prova' : 'Usuària Municipal Prova', reporter_position: brigade ? 'Operari de brigada' : 'Administrativa', category: data.category || '' },
       events: [], notifications: [], nc: null };
-    addEvent(item, brigade ? 'Avís de brigada' : 'Avís municipal', brigade ? 'Operari Prova' : 'Ajuntament · recepció', 'Incidència creada en aquesta sessió de demostració.');
-    cases.unshift(item);
+    addEvent(item, brigade ? 'Avís de brigada' : 'Avís municipal', brigade ? 'Operari Prova' : 'Ajuntament', 'Incidència creada en aquesta sessió de demostració.');
+    cases.unshift(item); save();
     return { id, number: item.number };
   }
   function action(item, kind, data) {
     const role = data.actor_role;
     if (kind === 'assign') {
-      if (role !== 'municipal' || item.state_id !== 9) throw Error('Aquesta acció requereix recepció municipal i una incidència pendent de revisió.');
+      if (role !== 'municipal' || item.state_id !== 9) throw Error('Aquesta acció requereix l’Ajuntament i una incidència pendent de revisió.');
       Object.assign(item.metadata, data, { assignee_name: data.assignee_id === 6 ? 'Operari Suport Prova' : 'Operari Prova', assignee_position: 'Operari de brigada' });
       item.category = data.category; item.owner_id = data.assignee_id; item.group_id = 3; item.state_id = 7; item.stage = 'En execució';
-      addEvent(item, 'Validació i assignació a SSMM', actor(role), `Assignada a ${item.metadata.assignee_name}.`);
+      addEvent(item, 'Revisió i assignació a SSMM', actor(role), `Assignada a ${item.metadata.assignee_name}.`);
       item.notifications.push({ channel: 'correu', recipient: 'Cap de Brigada (prova)', status: 'Previsualització · no enviat', message: `Activació de ${item.number}.` }, { channel: 'WhatsApp', recipient: 'Responsable del servei (prova)', status: 'Previsualització · no enviat', message: `Activació de ${item.number}.` }, { channel: 'WhatsApp', recipient: item.metadata.assignee_name, status: 'Previsualització · no enviat', message: `Feina assignada: ${item.number}.` });
     } else if (kind === 'preclose') {
       if (item.state_id !== 7 || item.owner_id !== ({ brigada: 4, brigada_suport: 6 }[role])) throw Error('Només l’operari assignat pot pretancar una feina en execució.');
@@ -94,9 +99,9 @@ const DemoStore = (() => {
       if (!item.photo) item.photo = item.photos[0]?.url || null;
       item.state_id = 8; item.stage = 'Pendent de validació';
       addEvent(item, 'Pretancament', actor(role), data.work_done);
-      item.notifications.push({ channel: 'correu', recipient: 'Validador Prova', status: 'Previsualització · no enviat', message: `${item.number} espera validació.` });
+      item.notifications.push({ channel: 'correu', recipient: 'Ajuntament', status: 'Previsualització · no enviat', message: `${item.number} espera validació.` });
     } else if (kind === 'return' || kind === 'close') {
-      if (!['municipal', 'validador'].includes(role) || item.state_id !== 8) throw Error('Només l’Ajuntament pot validar o retornar un pretancament.');
+      if (role !== 'municipal' || item.state_id !== 8) throw Error('Només l’Ajuntament pot validar o retornar un pretancament.');
       if (kind === 'return') {
         item.state_id = 7; item.stage = 'En execució'; item.metadata.return_reason = data.return_reason;
         addEvent(item, 'Retorn a brigada', actor(role), data.return_reason);
@@ -107,23 +112,24 @@ const DemoStore = (() => {
         addEvent(item, 'Tancament validat', actor(role), data.closure_reason);
       }
     } else if (kind === 'update') {
-      if (!['municipal', 'validador'].includes(role) || item.state_id === 4) throw Error('Només l’Ajuntament pot editar una incidència oberta.');
+      if (role !== 'municipal' || item.state_id === 4) throw Error('Només l’Ajuntament pot editar una incidència oberta.');
       if (!data.what || !data.where) throw Error('Cal indicar què passa i on.');
       item.title = '[MOSTRA ALELLA] ' + data.what; item.location = data.where; item.origin = data.origin || item.origin; item.category = data.category;
       Object.assign(item.metadata, { origin_department: data.origin_department, target_department: data.target_department, category: data.category, priority: data.priority, cause: data.cause });
       addEvent(item, 'Dades editades', actor(role), 'Fitxa completada o corregida.');
     } else if (kind === 'followup') {
       const assigned = { brigada: 4, brigada_suport: 6 }[role];
-      if (item.state_id === 4 || !(['municipal', 'validador', 'cap_brigada', 'responsable_servei'].includes(role) || (assigned && item.owner_id === assigned))) throw Error('Només l’Ajuntament, els responsables i l’operari assignat poden afegir seguiments a una incidència oberta.');
+      if (item.state_id === 4 || !(['municipal', 'cap_brigada', 'responsable_servei'].includes(role) || (assigned && item.owner_id === assigned))) throw Error('Només l’Ajuntament, els responsables i l’operari assignat poden afegir seguiments a una incidència oberta.');
       if (!data.text) throw Error('Cal escriure el seguiment.');
       const files = makeFiles(data.files, 'Seguiment'); item.attachments.push(...files); item.photos.push(...files.filter(f => f.image));
       (item.followups ||= []).push({ author: actor(role), at: now(), text: data.text, files });
       addEvent(item, 'Seguiment', actor(role), data.text);
     } else if (kind === 'nc') {
-      if (!['municipal', 'validador'].includes(role) || item.nc) throw Error('La NC ja existeix o el perfil no la pot crear.');
+      if (role !== 'municipal' || item.nc) throw Error('La NC ja existeix o el perfil no la pot crear.');
       item.nc = { reference: `NC-DEMO-${String(nextNc++).padStart(3, '0')}`, status: 'Oberta · demostració', reason: data.reason, cause: data.cause };
       addEvent(item, 'Derivació a NC', actor(role), data.reason);
     } else throw Error('Acció desconeguda.');
+    save();
     return { id: item.id };
   }
   function request(path, options = {}) {
@@ -147,5 +153,5 @@ const DemoStore = (() => {
     }
     throw Error('Funció no disponible en aquesta demo estàtica.');
   }
-  return { request, streets: q => streets.filter(s => s.label.toLocaleLowerCase('ca').includes(q.toLocaleLowerCase('ca'))) };
+  return { request, reset: () => { try { sessionStorage.removeItem(KEY); } catch {} }, streets: q => streets.filter(s => s.label.toLocaleLowerCase('ca').includes(q.toLocaleLowerCase('ca'))) };
 })();
